@@ -1,14 +1,14 @@
 // server.js - เซิร์ฟเวอร์สำหรับ index.html (แชตคนใกล้ตัว สมุทรสงคราม)
 // ไม่ต้องติดตั้งแพ็กเกจเพิ่ม ใช้ Node.js 16 ขึ้นไป
-// รัน: ADMIN_KEY=m159357p node server.js   แล้วเปิด http://localhost:3000
+// รัน: ADMIN_KEY=รหัสของคุณ node server.js   แล้วเปิด http://localhost:3000
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const PORT = process.env.PORT || 3000;
-const ADMIN_KEY = process.env.ADMIN_KEY || 'm159357p';
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const DATA = path.join(__dirname, 'data.json');
 const MEDIA_TTL = 60 * 60 * 1000; // รูป/เสียงหมดอายุใน 1 ชม.
 const MAX_MSGS = 300, MAX_DMS = 2000;
 
-let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null };
+let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {} };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8'))); } catch (e) {}
 let saveT;
 function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.writeFile(DATA, JSON.stringify(db), function () {}); }, 1500); }
@@ -81,6 +81,7 @@ function isAdmin(ak) {
 }
 const clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 const pvOf = id => (db.pics[id] ? db.pics[id].v : 0);
+const vipOf = id => db.vips[id] > Date.now();
 const banOf = id => (db.bans[id] > Date.now() ? db.bans[id] : 0);
 
 function sse(res, ev, data) { res.write('event: ' + ev + '\ndata: ' + JSON.stringify(data) + '\n\n'); }
@@ -92,7 +93,7 @@ function toAdmins(ev, data) { users.forEach(function (u) { if (u.adm) u.conns.fo
 function people() {
   const out = [];
   users.forEach(function (u, id) {
-    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm });
+    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id) });
   });
   return out.concat(BOTS);
 }
@@ -145,6 +146,15 @@ function handleApi(req, res, route) {
       return json(res, 200, { pv: db.pics[id].v });
     }
 
+    if (route === 'vip') {
+      if (!adm) return json(res, 403, { error: 'forbidden' });
+      const t = String(b.target || ''), tu = users.get(t);
+      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (b.on) db.vips[t] = Date.now() + 30 * 86400000; else delete db.vips[t];
+      save(); pushPeople();
+      return json(res, 200, { ok: true });
+    }
+
     if (route === 'announce') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       db.announce = { t: clean(b.t, 150), ts: Date.now() };
@@ -176,7 +186,7 @@ function handleApi(req, res, route) {
       if (route === 'send') {
         if (!(b.d === 0 || b.d === 1 || b.d === 2)) return json(res, 400, { error: 'bad' });
         const r = b.r === 'checkpoint' ? 'checkpoint' : 'general';
-        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, pv: pvOf(id) }, c);
+        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), pv: pvOf(id) }, c);
         const list = db.msgs[r]; list.push(m);
         while (list.length > MAX_MSGS) list.shift();
         save(); toAll('msg', m);
@@ -185,7 +195,7 @@ function handleApi(req, res, route) {
 
       const to = String(b.to || '');
       if (!to || to === id) return json(res, 400, { error: 'bad' });
-      const m = Object.assign({ a: id, b: to, an: name, adm: adm, pv: pvOf(id), ts: now }, c);
+      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), pv: pvOf(id), ts: now }, c);
       db.dms.push(m);
       while (db.dms.length > MAX_DMS) db.dms.shift();
       save(); toUsers([id, to], 'dm', m);
@@ -252,10 +262,13 @@ setInterval(function () {
   function sweep(m) { if ((m.im || m.au) && now - m.ts > MEDIA_TTL) { delete m.im; delete m.au; m.exp = true; ch = true; } }
   db.msgs.general.forEach(sweep); db.msgs.checkpoint.forEach(sweep); db.dms.forEach(sweep);
   if (ch) save();
+  let vc = false;
+  Object.keys(db.vips).forEach(function (k) { if (db.vips[k] <= now) { delete db.vips[k]; vc = true; } });
+  if (vc) { save(); pushPeople(); }
 }, 60000);
 
 server.listen(PORT, function () {
   botStart();
   console.log('เปิดที่ http://localhost:' + PORT);
-  if (!ADMIN_KEY) console.log('m159357p');
+  if (!ADMIN_KEY) console.log('ยังไม่ได้ตั้ง ADMIN_KEY จึงใช้ระบบแอดมินไม่ได้');
 });

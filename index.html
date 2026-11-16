@@ -6,9 +6,9 @@
 <title>แชตคนใกล้ตัว สมุทรสงคราม</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
---bg:#f3f5f7;--card:#fff;--tx:#1d2330;--mut:#7a8394;--ac:#1f9d7a;--me:#d8f3ea;--bd:#e1e5ea}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161c;--card:#1c222b;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}}
-:root[data-theme="dark"]{--bg:#12161c;--card:#1c222b;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}
+--vip:#7e22ce;--bg:#f3f5f7;--card:#fff;--tx:#1d2330;--mut:#7a8394;--ac:#1f9d7a;--me:#d8f3ea;--bd:#e1e5ea}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--vip:#c084fc;--bg:#12161c;--card:#1c222b;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}}
+:root[data-theme="dark"]{--vip:#c084fc;--bg:#12161c;--card:#1c222b;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 *{box-sizing:border-box}
 body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Thai",sans-serif;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:10px;gap:8px}
@@ -48,6 +48,7 @@ button:disabled,select:disabled{opacity:.6}
 </head>
 <body>
 <div id="mq"><div id="mqt">ผู้ดูแลระบบจะใช้ชื่อแชตสีแดงในการพิมพ์คุยเท่านั้น ติดต่อผู้ดูแลระบบได้ที่เฟซบุ๊ก มานพ อาญชนะปาน</div></div>
+<div id="rd" class="card" style="flex:none;display:flex;gap:8px;align-items:center;padding:8px 10px"><button id="rdb" style="flex:none;min-width:44px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:80px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:12px;min-width:52px"></span></div>
 <div class="card top">
   <div class="row"><div id="cnt" style="flex:1;font-size:15px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
   <div class="row" id="tabs"><button class="p" data-r="general">💬 แชตทั่วไป</button><button data-r="checkpoint">🚔 ตรวจสอบด่านตรวจในจังหวัด</button></div>
@@ -61,7 +62,7 @@ button:disabled,select:disabled{opacity:.6}
 <div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:95%;max-height:90%"></div>
 <div id="dmw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;align-items:center;justify-content:center;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
  <div class="card" style="width:100%;max-width:440px;height:75%;display:flex;flex-direction:column;gap:8px">
-  <div class="row"><b id="dmt" style="flex:1"></b><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
+  <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
   <div id="dmm" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
   <div class="mut">ส่งถึงผู้รับเท่านั้น แต่ไม่ได้เข้ารหัส ผู้ดูแลเซิร์ฟเวอร์อาจเปิดไฟล์ข้อมูลอ่านได้ อย่าส่งข้อมูลสำคัญ</div>
   <div class="row"><input id="dmi" maxlength="200"><button id="dib" title="ส่งรูปภาพ">🖼️</button><button id="dvb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="dmb" class="p">ส่ง</button></div>
@@ -143,12 +144,14 @@ function body(m){
 var au=new Audio(),curKey="";
 au.onplay=au.onpause=au.onended=function(){render();renderDm()};
 function playV(m){var key=(m.u||m.a)+"|"+m.ts;if(curKey===key&&!au.paused){au.pause();return}curKey=key;au.src=m.au;au.play().catch(function(){})}
-function nameSpan(name,isAdm){var s=document.createElement("span");s.textContent=name;if(isAdm)s.style.cssText="color:#e5484d;font-weight:700";return s}
+function sfx(o){return o.adm?" (ผู้ดูแลแชท)":o.vip?" (vip)":""}
+function tone(o){return o.adm?"#e5484d":o.vip?"var(--vip)":""}
+function nameSpan(name,isAdm,isVip){var o={adm:isAdm,vip:isVip},s=document.createElement("span");s.textContent=name+sfx(o);if(tone(o))s.style.cssText="color:"+tone(o)+";font-weight:700";return s}
 function render(){
   var all=people.filter(function(p){return p.id!==uid}),nb=all.filter(function(p){return p.bot}).length;
   var un={};dm.forEach(function(m){if(m.a!==uid&&m.ts>(seen[m.a]||loadTs))un[m.a]=1});var nu=Object.keys(un).length;
   $("cnt").textContent=(conn?"🟢":"🔴")+" ออนไลน์ "+(all.length-nb+1)+" คน"+(nb?" · 🤖 "+nb+" บอท":"")+(admin?" · 👑":"")+(nu?" · 🔔 "+nu+" ข้อความส่วนตัว":"");
-  $("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";
+  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";
   var pe=$("ppl"),box=$("msgs");pe.textContent="";box.textContent="";
   if(d===null){pe.className="mut";pe.textContent="เลือกอำเภอของคุณเพื่อเริ่มแชต";
     var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="เลือกอำเภอด้านบนก่อนนะ";box.appendChild(h);return}
@@ -157,13 +160,13 @@ function render(){
   if(!list.length)pe.textContent="ยังไม่มีคนอื่นออนไลน์ในระยะ";
   list.forEach(function(p){
     var c=document.createElement("div"),b=document.createElement("b");c.className="chip";
-    b.textContent=(un[p.id]?"🔔 ":"")+p.n+(p.bot?" 🤖":"");c.title="แตะเพื่อกระซิบ";if(p.adm)b.style.color="#e5484d";
+    b.textContent=(un[p.id]?"🔔 ":"")+p.n+(p.bot?" 🤖":"")+sfx(p);c.title="แตะเพื่อกระซิบ";if(tone(p))b.style.color=tone(p);
     c.onclick=function(){openDm(p)};c.appendChild(avEl(p.id,p.n,p.pv));c.appendChild(b);c.appendChild(document.createTextNode(far(p.d)));pe.appendChild(c)});
   chat.filter(function(m){return (m.r||"general")===room}).sort(function(a,b){return a.ts-b.ts}).forEach(function(m){
     if(!AREAS[m.d])return;var mine=m.u===uid;if(!mine&&!ok(m.d))return;
     var e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm));
+    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
     e.appendChild(s);e.appendChild(body(m));box.appendChild(e);
@@ -206,8 +209,8 @@ Array.prototype.forEach.call(tb,function(b){b.onclick=function(){room=b.dataset.
 // ---------- ข้อความกระซิบ ----------
 function openDm(p){
   dmPeer=p;
-  $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" 🤖":"");$("dmt").style.color=p.adm?"#e5484d":"";
-  armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
+  $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" 🤖":"")+sfx(p);$("dmt").style.color=tone(p);
+  updVip();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
   $("dmi").placeholder="พิมพ์ข้อความส่วนตัว…";
   $("dmw").style.display="flex";renderDm();render();
 }
@@ -219,7 +222,7 @@ function renderDm(){
   list.forEach(function(m){
     var mine=m.a===uid,e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
+    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
     s.insertBefore(avEl(m.a,mine?me:m.an,m.pv),s.firstChild);
     e.appendChild(s);e.appendChild(body(m));box.appendChild(e);
   });
@@ -237,6 +240,36 @@ $("dban").onclick=function(){
   if(!armed){armed=true;updBan();clearTimeout(armT);armT=setTimeout(function(){armed=false;updBan()},4000);return}
   armed=false;api("/api/ban",{target:id,mins:100});
 };
+
+// ---------- แต่งตั้ง VIP (แอดมิน) ----------
+function peerP(){return dmPeer?people.filter(function(x){return x.id===dmPeer.id})[0]:null}
+function updVip(){
+  var b=$("dvip");
+  if(!dmPeer||!admin||dmPeer.bot||dmPeer.adm||dmPeer.id===uid){b.style.display="none";return}
+  var p=peerP();b.style.display="";b.textContent=(p&&p.vip)?"💜 ยกเลิก VIP":"💜 แต่งตั้ง VIP 30 วัน";
+}
+$("dvip").onclick=function(){
+  if(!admin||!dmPeer)return;var p=peerP(),on=!!(p&&p.vip);
+  if(!on&&!confirm("แต่งตั้ง "+dmPeer.n+" เป็น VIP นาน 30 วัน?"))return;
+  api("/api/vip",{target:dmPeer.id,on:!on});
+};
+
+// ---------- วิทยุออนไลน์ ----------
+// เพิ่มสถานีได้ที่นี่ (ลิงก์ต้องขึ้นต้นด้วย https://)
+var RADIO=[{n:"📻 วิทยุออนไลน์",u:"https://radio9.plathong.net/7054/;stream.mp3"}];
+var rdA=new Audio();rdA.preload="none";rdA.volume=.7;
+RADIO.forEach(function(r,i){var o=document.createElement("option");o.value=i;o.textContent=r.n;$("rds").appendChild(o)});
+function rdStat(t){$("rdt").textContent=t}
+$("rdb").onclick=function(){
+  if(!rdA.paused){rdA.pause();rdA.removeAttribute("src");rdA.load();$("rdb").textContent="▶";rdStat("");return}
+  rdA.src=RADIO[+$("rds").value].u;rdStat("โหลด…");
+  rdA.play().catch(function(){$("rdb").textContent="▶";rdStat("เล่นไม่ได้")});
+};
+rdA.onplaying=function(){$("rdb").textContent="⏸";rdStat("🔴 สด")};
+rdA.onwaiting=function(){rdStat("โหลด…")};
+rdA.onerror=function(){$("rdb").textContent="▶";rdStat("ต่อไม่ได้")};
+$("rds").onchange=function(){if(!rdA.paused){rdA.src=RADIO[+this.value].u;rdA.play().catch(function(){})}};
+$("rdv").oninput=function(){rdA.volume=+this.value};
 
 // ---------- รูปภาพ ----------
 $("ib").onclick=function(){if(d===null){$("ci").placeholder="เลือกอำเภอก่อนนะ";return}$("imf").click()};
