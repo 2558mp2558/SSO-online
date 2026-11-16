@@ -270,5 +270,5 @@ setInterval(function () {
 server.listen(PORT, function () {
   botStart();
   console.log('เปิดที่ http://localhost:' + PORT);
-  if (!ADMIN_KEY) console.log('ยังไม่ได้ตั้ง ADMIN_KEY จึงใช้ระบบแอดมินไม่ได้');
+  if (!ADMIN_KEY) console.log('m159357p');
 });
