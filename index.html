@@ -362,7 +362,7 @@ function renderCams(){
       box.appendChild(t);
     });
     if(!ids.length){
-      var ph=document.createElement("div");ph.className="camph";ph.textContent="เฉพาะvipเท่านั้นที่สามารถเปิดกล้องมือถือให้ดูสดๆได้";box.appendChild(ph);
+      var ph=document.createElement("div");ph.className="camph";ph.textContent="เฉพาะvipเท่านั้นที่สามารถเปิดกล้องมือถือ 🎥 ให้ทุกคนในแชทดูไลฟ์สดๆตรงนี้ได้";box.appendChild(ph);
     }
   }else{
     ids.forEach(function(id){var im=box.querySelector('.ct[data-id="'+id+'"] img');if(im)im.src=camMap[id].f});
