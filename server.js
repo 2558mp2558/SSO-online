@@ -8,8 +8,9 @@ const DATA = path.join(__dirname, 'data.json');
 const MEDIA_TTL = 60 * 60 * 1000; // รูป/เสียงหมดอายุใน 1 ชม.
 const MAX_MSGS = 300, MAX_DMS = 2000;
 
-let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {} };
+let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, gallery: [] };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8'))); } catch (e) {}
+db.gallery = Array.isArray(db.gallery) ? db.gallery : [];
 // ลบข้อความของบอทที่ค้างอยู่ในข้อมูลเดิม
 db.msgs.general = (db.msgs.general || []).filter(function (m) { return !m.bot; });
 db.msgs.checkpoint = (db.msgs.checkpoint || []).filter(function (m) { return !m.bot; });
@@ -36,11 +37,11 @@ const RTC_TYPES = ['watch', 'offer', 'answer', 'ice', 'bye', 'busy'];
 const rtcRate = new Map(); // id -> {t, n}
 function camDrop(id) { if (cams.delete(id)) toAll('camoff', { id: id }); }
 
-// ---------- บัญชีผู้ช่วยระบบอัตโนมัติ 33 บัญชี: แสดงชัดเจนว่าเป็นบอท และสนทนาในห้องสาธารณะ ----------
+// ---------- บัญชีอัตโนมัติ 33 บัญชี สนทนาในห้องสาธารณะ ----------
 const BOT_NAMES = ["น้องฟ้า","พี่โจ้","ลุงชาติ","ป้าแต๋ว","น้ำฝน","บอยแม่กลอง","แพรวา","ต้นกล้า","ครูหนุ่ม","เจ๊อ้อย","หมูหยอง","ไก่ทอด","มะลิ","พิมพ์","โอ๊ต","เบสท์","กานต์","นุ่น","ปลาทู","ส้มโอ","ลิ้นจี่","ตาโต","อาร์ม","แจม","กุ้ง","ปอนด์","ฝ้าย","เมษา","ตุ๊กตา","บอสน้อย","ลุงสมชัย","พี่หนึ่ง","น้องเมย์"];
 const BOTS = BOT_NAMES.map(function (n, i) { return { id: 'bot' + i, n: n, d: i % 3, pv: 0, adm: false, bot: true }; });
 const BOTMAP = {}; BOTS.forEach(function (b) { BOTMAP[b.id] = b; });
-const DM_REPLY = ["สวัสดีครับ ผมเป็นผู้ช่วยระบบอัตโนมัติ 🤖", "ขอบคุณที่ทักนะครับ ผมเป็นบอทผู้ช่วยของห้องแชต", "ได้รับข้อความแล้วครับ 🤖"];
+const DM_REPLY = ["สวัสดีครับ 😊", "ขอบคุณที่ทักนะครับ ผมเป็นบอทผู้ช่วยของห้องแชต", "ได้รับข้อความแล้วครับ 🤖"];
 // ข้อความสาธารณะเป็นบทสนทนาทั่วไป ไม่สร้างข่าวหรือระบุพิกัดด่านตรวจที่ไม่ได้รับการยืนยัน
 const BOT_LINES = {
   general: [
@@ -112,7 +113,7 @@ function json(res, code, obj) {
 }
 function readBody(req, cb) {
   let size = 0; const chunks = [];
-  req.on('data', function (c) { size += c.length; if (size > 1200000) { req.destroy(); return; } chunks.push(c); });
+  req.on('data', function (c) { size += c.length; if (size > 2200000) { req.destroy(); return; } chunks.push(c); });
   req.on('end', function () { try { cb(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (e) { cb(null); } });
 }
 
@@ -145,6 +146,31 @@ function handleApi(req, res, route) {
         pushPeople();
       }
       return json(res, 200, { pv: pvOf(id) });
+    }
+
+    if (route === 'gallery-add' || route === 'gallery-replace') {
+      if (!adm) return json(res, 403, { error: 'forbidden' });
+      if (typeof b.image !== 'string' || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(b.image) || b.image.length > 1500000) return json(res, 400, { error: 'bad_image' });
+      if (route === 'gallery-add') {
+        if (db.gallery.length >= 20) return json(res, 400, { error: 'gallery_full' });
+        const item = { id: crypto.randomBytes(9).toString('hex'), image: b.image, ts: Date.now() };
+        db.gallery.push(item);
+      } else {
+        const item = db.gallery.find(function (x) { return x.id === String(b.id || ''); });
+        if (!item) return json(res, 404, { error: 'not_found' });
+        item.image = b.image; item.ts = Date.now();
+      }
+      save(); toAll('gallery', db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; }));
+      return json(res, 200, { ok: true, gallery: db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; }) });
+    }
+
+    if (route === 'gallery-delete') {
+      if (!adm) return json(res, 403, { error: 'forbidden' });
+      const before = db.gallery.length;
+      db.gallery = db.gallery.filter(function (x) { return x.id !== String(b.id || ''); });
+      if (db.gallery.length === before) return json(res, 404, { error: 'not_found' });
+      save(); toAll('gallery', db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; }));
+      return json(res, 200, { ok: true });
     }
 
     if (route === 'pic') {
@@ -293,6 +319,17 @@ const server = http.createServer(function (req, res) {
     });
   }
   if (req.method === 'GET' && p === '/events') return handleEvents(req, res, url.searchParams);
+  if (req.method === 'GET' && p === '/api/gallery') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify(db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; })));
+  }
+  if (req.method === 'GET' && p.indexOf('/gallery-image/') === 0) {
+    const item = db.gallery.find(function (x) { return x.id === p.slice(15); });
+    if (!item) { res.writeHead(404); return res.end(); }
+    const raw = Buffer.from(item.image.split(',')[1], 'base64');
+    res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=60' });
+    return res.end(raw);
+  }
   if (req.method === 'GET' && p.indexOf('/pic/') === 0) {
     const pic = db.pics[p.slice(5)];
     if (!pic) { res.writeHead(404); return res.end(); }

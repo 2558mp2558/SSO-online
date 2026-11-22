@@ -49,10 +49,23 @@ button:disabled,select:disabled{opacity:.6}
 .ct img{width:100%;height:100%;object-fit:cover;display:block}
 .ct span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);color:#fff;font-size:10px;line-height:1.3;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:1px 2px}
 .camph{flex:1;min-width:0;min-height:64px;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px 8px;border:1px dashed var(--mut);border-radius:8px;color:var(--mut);font-size:12px;line-height:1.4}
+#gallery{flex:none;display:none;overflow:hidden;position:relative;border:1px solid var(--bd);border-radius:10px;background:#101010;padding:5px 0;min-height:0}
+#galleryTrack{display:flex;width:max-content;gap:10px;animation:galleryMove 75s linear infinite;align-items:center}
+#gallery:hover #galleryTrack{animation-play-state:paused}
+.galleryItem{position:relative;flex:none;height:104px;width:auto;max-width:220px;border-radius:8px;overflow:hidden;background:#222}
+.galleryItem img{height:104px;width:auto;max-width:220px;display:block;object-fit:contain}
+.galleryTools{position:absolute;right:4px;top:4px;display:flex;gap:4px}
+.galleryTools button{min-height:27px;padding:2px 6px;font-size:12px;background:rgba(0,0,0,.78);border-color:#777}
+#galleryAdmin{display:none;flex:none;align-items:center;gap:6px}
+#galleryAdmin button{min-height:30px;padding:3px 9px;font-size:12px}
+@keyframes galleryMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){#galleryTrack{animation:none}}
 </style>
 </head>
 <body>
 <div id="mq"><div id="mqt">จังหวัด สมุทรสงคราม อ.เมือง อ.อัมพวา อ.บางคนที ยินดีต้อนรับ เข้าสู่ เว็บแชทสดหาเพื่อนคุยในระยะใกล้ๆฟรี24ชั่วโมง มีวิทยุออนไลน์ให้ฟังฟรี24ชั่วโมง (แชทมีระบบส่งรูปภาพและส่งเสียงได้) แชทแบ่งออกเป็น2ห้อง ดังนี้ หาเพื่อนคุย และ เช็คด่านตรวจในจังหวัด ท่านสามารถกระซิบคุยส่วนตัวกันได้ฟรี ผู้ดูแลแชทจะใช้ชื่อสีแดงในการพิมพ์คุยและมีสิทธิ์ลบข้อความหรือลบรูปหรือลบเสียงหากท่านทำการปั่นป่วนห้องแชท ติดต่อผู้พัฒนาแอพได้ที่เฟสบุ๊ค มานพ อาญชนะปาน</div></div>
+<div id="gallery" aria-label="ภาพประชาสัมพันธ์"><div id="galleryTrack"></div></div>
+<div id="galleryAdmin"><button id="galleryAdd" class="p">＋ เพิ่มรูปภาพ</button><span class="mut">จัดการรูปภาพ (เฉพาะแอดมิน)</span><input id="galleryFile" type="file" accept="image/*" hidden></div>
 <div id="rd" class="card" style="flex:none;display:flex;gap:6px;align-items:center;padding:4px 6px"><button id="rdb" style="flex:none;min-width:34px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:64px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:11px;min-width:40px"></span></div>
 <div class="card top">
   <div class="row"><div id="cnt" style="flex:1;font-size:13px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
@@ -166,13 +179,13 @@ function render(){
   if(!list.length)pe.textContent="ยังไม่มีคนอื่นออนไลน์ในระยะ";
   list.forEach(function(p){
     var c=document.createElement("div"),b=document.createElement("b");c.className="chip";
-    b.textContent=(un[p.id]?"🔔 ":"")+p.n+(p.bot?" (ผู้ช่วยระบบ 🤖)":"")+sfx(p);c.title="แตะเพื่อกระซิบ";if(tone(p))b.style.color=tone(p);
+    b.textContent=(un[p.id]?"🔔 ":"")+p.n+(p.bot?" 🤖":"")+sfx(p);c.title="แตะเพื่อกระซิบ";if(tone(p))b.style.color=tone(p);
     c.onclick=function(){openDm(p)};c.appendChild(avEl(p.id,p.n,p.pv));c.appendChild(b);c.appendChild(document.createTextNode(far(p.d)));pe.appendChild(c)});
   chat.filter(function(m){return (m.r||"general")===room}).sort(function(a,b){return a.ts-b.ts}).forEach(function(m){
     if(!AREAS[m.d])return;var mine=m.u===uid;if(!mine&&!ok(m.d))return;
     var e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" (ผู้ช่วยระบบ 🤖)":""),m.adm,m.vip));
+    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
     if(admin){
@@ -221,7 +234,7 @@ Array.prototype.forEach.call(tb,function(b){b.onclick=function(){room=b.dataset.
 // ---------- ข้อความกระซิบ ----------
 function openDm(p){
   dmPeer=p;
-  $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" (ผู้ช่วยระบบ 🤖)":"")+sfx(p);$("dmt").style.color=tone(p);
+  $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" 🤖":"")+sfx(p);$("dmt").style.color=tone(p);
   updVip();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
   $("dmi").placeholder="พิมพ์ข้อความส่วนตัว…";
   $("dmw").style.display="flex";renderDm();render();
@@ -503,6 +516,34 @@ $("vb").onclick=async function(){
   mt=setInterval(function(){ms++;$("dvb").textContent=$("vb").textContent="⏹ "+(15-ms);if(ms>=15&&mr)mr.stop()},1000);
 };
 
+// ---------- แกลเลอรีรูปภาพ (จัดการได้เฉพาะแอดมิน) ----------
+var galleryItems=[],galleryEditId=null;
+function galleryRender(){
+  var box=$("gallery"),track=$("galleryTrack"),tools=$("galleryAdmin");
+  tools.style.display=admin?"flex":"none";
+  box.style.display=galleryItems.length?"block":"none";track.textContent="";
+  if(!galleryItems.length)return;
+  function addSet(){galleryItems.forEach(function(item){
+    var wrap=document.createElement("div"),im=document.createElement("img");wrap.className="galleryItem";im.src="/gallery-image/"+encodeURIComponent(item.id)+"?v="+item.ts;im.alt="ภาพประชาสัมพันธ์";wrap.appendChild(im);
+    if(admin){var bar=document.createElement("div"),edit=document.createElement("button"),del=document.createElement("button");bar.className="galleryTools";edit.type=del.type="button";edit.textContent="✏️";edit.title="เปลี่ยนรูป";del.textContent="🗑️";del.title="ลบรูป";edit.onclick=function(){galleryEditId=item.id;$("galleryFile").click()};del.onclick=function(){if(!confirm("ต้องการลบรูปนี้ออกจากแถบภาพใช่ไหม?"))return;api("/api/gallery-delete",{id:item.id}).then(function(r){if(r._s===200)galleryLoad();else alert("ลบรูปไม่สำเร็จ")})};bar.appendChild(edit);bar.appendChild(del);wrap.appendChild(bar)}
+    track.appendChild(wrap);
+  })}
+  addSet();addSet();
+}
+function galleryLoad(){fetch("/api/gallery",{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("load");return r.json()}).then(function(a){galleryItems=Array.isArray(a)?a:[];galleryRender()}).catch(function(){})}
+$("galleryAdd").onclick=function(){if(!admin)return;galleryEditId=null;$("galleryFile").click()};
+$("galleryFile").onchange=function(){
+  var f=this.files&&this.files[0];this.value="";if(!f||f.type.indexOf("image/")!==0)return;
+  var rd=new FileReader();rd.onload=function(){var im=new Image();im.onload=function(){
+    var sc=Math.min(1,1280/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*sc)),h=Math.max(1,Math.round(im.height*sc)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);
+    var q=.82,data=c.toDataURL("image/jpeg",q);while(data.length>1400000&&q>.35){q-=.08;data=c.toDataURL("image/jpeg",q)}
+    if(data.length>1400000){alert("รูปมีขนาดใหญ่เกินไป กรุณาเลือกรูปอื่น");return}
+    var route=galleryEditId?"/api/gallery-replace":"/api/gallery-add",payload={image:data};if(galleryEditId)payload.id=galleryEditId;
+    api(route,payload).then(function(r){if(r._s===200){galleryEditId=null;galleryLoad()}else if(r.error==="gallery_full")alert("เพิ่มได้สูงสุด 20 รูป กรุณาลบรูปเก่าก่อน") ;else if(r._s===403)alert("เฉพาะแอดมินเท่านั้น");else alert("บันทึกรูปไม่สำเร็จ กรุณาลองใหม่")});
+  };im.onerror=function(){alert("เปิดไฟล์รูปนี้ไม่ได้")};im.src=rd.result};rd.readAsDataURL(f);
+};
+galleryLoad();
+
 // ---------- แอดมิน ----------
 $("adm").onclick=function(){
   if(admin){ak="";try{localStorage.removeItem("smak")}catch(e){}connect();return}
@@ -539,7 +580,7 @@ function connect(tryAdmin){
     if(myPic&&!myPv)uploadPic();
     camMap={};(x.cams||[]).forEach(function(c){camMap[c.id]=c});camSig="";
     if(x.ice&&x.ice.length)rtcIce=x.ice;
-    setAv();push();render();renderDm();
+    setAv();push();render();renderDm();galleryRender();galleryLoad();
   });
   es.addEventListener("msg",function(e){chat.push(JSON.parse(e.data));if(chat.length>300)chat.shift();render()});
   es.addEventListener("cam",function(e){var c=JSON.parse(e.data);camMap[c.id]=c;renderCams();if(lbCam===c.id&&$("lb").style.display==="flex")$("lbi").src=c.f});
@@ -550,6 +591,7 @@ function connect(tryAdmin){
   es.addEventListener("dm",function(e){dm.push(JSON.parse(e.data));renderDm();render()});
   es.addEventListener("ban",function(e){banUntil=JSON.parse(e.data).until||0;if(banUntil)chkBan();else note(ph())});
   es.addEventListener("announce",function(e){ann=JSON.parse(e.data);showAnn()});
+  es.addEventListener("gallery",function(){galleryLoad()});
   es.addEventListener("bans",function(e){bans=JSON.parse(e.data);updBan()});
   es.onerror=function(){conn=false;render()};
 }
