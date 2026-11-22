@@ -20,6 +20,12 @@ function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.write
 const users = new Map(); // id -> {conns:Set, n, d, adm}
 const lastSend = new Map();
 
+// ---------- บอท 33 ตัว แสดงในรายชื่อผู้ออนไลน์ (ระบุว่าเป็นบอท ไม่พิมพ์ในแชท ตอบเฉพาะข้อความกระซิบ) ----------
+const BOT_NAMES = ["น้องฟ้า","พี่โจ้","ลุงชาติ","ป้าแต๋ว","น้ำฝน","บอยแม่กลอง","แพรวา","ต้นกล้า","ครูหนุ่ม","เจ๊อ้อย","หมูหยอง","ไก่ทอด","มะลิ","พิมพ์","โอ๊ต","เบสท์","กานต์","นุ่น","ปลาทู","ส้มโอ","ลิ้นจี่","ตาโต","อาร์ม","แจม","กุ้ง","ปอนด์","ฝ้าย","เมษา","ตุ๊กตา","บอสน้อย","ลุงสมชัย","พี่หนึ่ง","น้องเมย์"];
+const BOTS = BOT_NAMES.map(function (n, i) { return { id: 'bot' + i, n: n, d: i % 3, pv: 0, adm: false, bot: true }; });
+const BOTMAP = {}; BOTS.forEach(function (b) { BOTMAP[b.id] = b; });
+const DM_REPLY = ["สวัสดีครับ ผมเป็นบอทประจำห้องแชต ยังคุยได้ไม่เยอะ 🤖", "ขอบคุณที่ทักนะ แต่ผมเป็นบอทครับ", "ได้รับข้อความแล้วครับ ผมเป็นบอทเลยตอบได้แค่นี้ 🤖"];
+
 const uidOf = tk => crypto.createHash('sha256').update(tk).digest('hex').slice(0, 16);
 const okTk = tk => typeof tk === 'string' && /^[0-9a-f]{16,100}$/.test(tk);
 function isAdmin(ak) {
@@ -43,7 +49,7 @@ function people() {
   users.forEach(function (u, id) {
     if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id) });
   });
-  return out;
+  return out.concat(BOTS);
 }
 const pushPeople = () => toAll('people', people());
 
@@ -97,7 +103,7 @@ function handleApi(req, res, route) {
     if (route === 'vip') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), tu = users.get(t);
-      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
       if (b.on) db.vips[t] = Date.now() + 30 * 86400000; else delete db.vips[t];
       save(); pushPeople();
       return json(res, 200, { ok: true });
@@ -124,7 +130,7 @@ function handleApi(req, res, route) {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), mins = Math.max(0, Math.min(1440, +b.mins || 0));
       const tu = users.get(t);
-      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
       if (mins) db.bans[t] = Date.now() + mins * 60000; else delete db.bans[t];
       save();
       toUsers([t], 'ban', { until: banOf(t) });
@@ -157,6 +163,11 @@ function handleApi(req, res, route) {
       db.dms.push(m);
       while (db.dms.length > MAX_DMS) db.dms.shift();
       save(); toUsers([id, to], 'dm', m);
+      const bb = BOTMAP[to];
+      if (bb) setTimeout(function () {
+        const r = { a: to, b: id, an: bb.n, adm: false, pv: 0, ts: Date.now(), k: 't', t: DM_REPLY[Math.floor(Math.random() * DM_REPLY.length)], bot: true };
+        db.dms.push(r); save(); toUsers([id], 'dm', r);
+      }, 1500 + Math.random() * 2500);
       return json(res, 200, { ok: true });
     }
 
