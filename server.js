@@ -19,8 +19,8 @@ let saveT;
 function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.writeFile(DATA, JSON.stringify(db), function () {}); }, 1500); }
 
 const users = new Map(); // id -> {conns:Set, n, d, adm}
+let live = null; // การพูดสดของแอดมิน {id, n, last}
 const lastSend = new Map();
-let liveVoice = null; // {adminId, session}
 
 // ---------- บัญชีอัตโนมัติ 33 บัญชี สนทนาในห้องสาธารณะ ----------
 const BOT_NAMES = ["น้องฟ้า","พี่โจ้","ลุงชาติ","ป้าแต๋ว","น้ำฝน","บอยแม่กลอง","แพรวา","ต้นกล้า","ครูหนุ่ม","เจ๊อ้อย","หมูหยอง","ไก่ทอด","มะลิ","พิมพ์","โอ๊ต","เบสท์","กานต์","นุ่น","ปลาทู","ส้มโอ","ลิ้นจี่","ตาโต","อาร์ม","แจม","กุ้ง","ปอนด์","ฝ้าย","เมษา","ตุ๊กตา","บอสน้อย","ลุงสมชัย","พี่หนึ่ง","น้องเมย์"];
@@ -82,6 +82,8 @@ function toUsers(ids, ev, data) {
   ids.forEach(function (id) { const u = users.get(id); if (u) u.conns.forEach(function (r) { sse(r, ev, data); }); });
 }
 function toAll(ev, data) { users.forEach(function (u) { u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
+function toOthers(exceptId, ev, data) { users.forEach(function (u, id) { if (id !== exceptId) u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
+function stopLive() { if (live) { live = null; toAll('live', { on: false }); } }
 function toAdmins(ev, data) { users.forEach(function (u) { if (u.adm) u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
 function people() {
   const out = [];
@@ -173,6 +175,27 @@ function handleApi(req, res, route) {
       return json(res, 200, { ok: true });
     }
 
+    if (route === 'live') {
+      if (!adm) return json(res, 403, { error: 'forbidden' });
+      if (b.st === 'start') {
+        live = { id: id, n: name, last: Date.now() };
+        toAll('live', { on: true, n: name, u: id });
+        return json(res, 200, { ok: true });
+      }
+      if (b.st === 'stop') {
+        if (live && live.id === id) stopLive();
+        return json(res, 200, { ok: true });
+      }
+      if (b.st === 'data') {
+        if (!live || live.id !== id) return json(res, 409, { error: 'not_live' });
+        if (typeof b.p !== 'string' || b.p.length > 40000 || !/^[A-Za-z0-9+/]+=*$/.test(b.p)) return json(res, 400, { error: 'bad' });
+        live.last = Date.now();
+        toOthers(id, 'pcm', { p: b.p });
+        return json(res, 200, { ok: true });
+      }
+      return json(res, 400, { error: 'bad' });
+    }
+
     if (route === 'announce') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       db.announce = { t: clean(b.t, 150), ts: Date.now() };
@@ -200,41 +223,6 @@ function handleApi(req, res, route) {
       save();
       toUsers([t], 'ban', { until: banOf(t) });
       toAdmins('bans', db.bans);
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'voice-start') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      const session = crypto.randomBytes(12).toString('hex');
-      liveVoice = { adminId: id, session: session, participants: new Set() };
-      toAll('voice-start', { adminId: id, session: session });
-      return json(res, 200, { ok: true, session: session });
-    }
-
-    if (route === 'voice-stop') {
-      if (!adm || !liveVoice || liveVoice.adminId !== id || b.session !== liveVoice.session) return json(res, 403, { error: 'forbidden' });
-      liveVoice = null;
-      toAll('voice-stop', { ok: true });
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'voice-signal') {
-      const target = String(b.target || ''), sig = b.signal;
-      if (!liveVoice || b.session !== liveVoice.session || !target || !sig || typeof sig !== 'object') return json(res, 400, { error: 'bad' });
-      const dest = users.get(target);
-      if (!dest || !dest.conns.size || target === id) return json(res, 404, { error: 'offline' });
-      if (sig.type === 'ready') {
-        if (adm || target !== liveVoice.adminId || id === liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
-        liveVoice.participants.add(id);
-      } else if (sig.type === 'offer') {
-        if (!adm || id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
-      } else if (sig.type === 'answer' || sig.type === 'ice') {
-        if (adm) {
-          if (id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
-        } else if (target !== liveVoice.adminId || !liveVoice.participants.has(id)) return json(res, 403, { error: 'forbidden' });
-      } else return json(res, 400, { error: 'bad_signal' });
-      const payload = { from: id, session: liveVoice.session, signal: sig };
-      toUsers([target], 'voice-signal', payload);
       return json(res, 200, { ok: true });
     }
 
@@ -291,17 +279,13 @@ function handleEvents(req, res, q) {
     dms: db.dms.filter(function (m) { return m.a === id || m.b === id; }),
     bans: adm ? db.bans : {},
     announce: db.announce,
+    live: live ? { on: true, n: live.n, u: live.id } : null,
   });
   pushPeople();
-  if (liveVoice && liveVoice.adminId !== id) sse(res, 'voice-start', { adminId: liveVoice.adminId, session: liveVoice.session });
   const ka = setInterval(function () { res.write(': ping\n\n'); }, 25000);
   req.on('close', function () {
     clearInterval(ka); u.conns.delete(res);
-    if (!u.conns.size) {
-      users.delete(id);
-      if (liveVoice && liveVoice.adminId === id) { liveVoice = null; toAll('voice-stop', { ok: true }); }
-      else if (liveVoice) liveVoice.participants.delete(id);
-    }
+    if (!u.conns.size) { users.delete(id); if (live && live.id === id) setTimeout(function () { if (live && live.id === id && !users.has(id)) stopLive(); }, 6000); }
     pushPeople();
   });
 }
@@ -336,6 +320,9 @@ const server = http.createServer(function (req, res) {
   res.writeHead(404); res.end();
 });
 
+
+// ปิดการพูดสดอัตโนมัติถ้าไม่มีเสียงส่งมานาน
+setInterval(function () { if (live && Date.now() - live.last > 10000) stopLive(); }, 3000);
 
 // ลบรูป/เสียงที่หมดอายุ
 setInterval(function () {
