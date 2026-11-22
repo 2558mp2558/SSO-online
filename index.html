@@ -38,14 +38,14 @@ button:disabled,select:disabled{opacity:.6}
 .m{max-width:88%;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 12px;font-size:15px;word-break:break-word}
 .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
 #mq{flex:none;border:2px solid #e5484d;border-radius:10px;overflow:hidden;white-space:nowrap;background:var(--card);padding:6px 0}
-#mqt{display:inline-block;color:#e5484d;font-weight:700;font-size:14px;animation:mq 24s linear infinite}
+#mqt{display:inline-block;color:#e5484d;font-weight:700;font-size:14px;animation:mq 60s linear infinite}
 @keyframes mq{from{transform:translateX(480px)}to{transform:translateX(-100%)}}
 @media(prefers-reduced-motion:reduce){#mqt{animation:none;white-space:normal}}
 .m small{display:block;color:var(--mut);font-size:11px;margin-bottom:2px}
 </style>
 </head>
 <body>
-<div id="mq"><div id="mqt">ผู้ดูแลระบบจะใช้ชื่อแชตสีแดงในการพิมพ์คุยเท่านั้น ติดต่อผู้ดูแลระบบได้ที่เฟซบุ๊ก มานพ อาญชนะปาน</div></div>
+<div id="mq"><div id="mqt">จังหวัด สมุทรสงคราม อ.เมือง อ.อัมพวา อ.บางคนที ยินดีต้อนรับ เข้าสู่ เว็บแชทสดหาเพื่อนคุยในระยะใกล้ๆฟรี24ชั่วโมง มีวิทยุออนไลน์ให้ฟังฟรี24ชั่วโมง แชทแบ่งออกเป็น2ห้อง ดังนี้ หาเพื่อนคุย และ เช็คด่านตรวจในจังหวัด ท่านสามารถกระซิบคุยส่วนตัวกันได้ฟรี ติดต่อผู้พัฒนาแอพได้ที่เฟสบุ๊ค มานพ อาญชนะปาน</div></div>
 <div id="rd" class="card" style="flex:none;display:flex;gap:8px;align-items:center;padding:8px 10px"><button id="rdb" style="flex:none;min-width:44px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:80px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:12px;min-width:52px"></span></div>
 <div class="card top">
   <div class="row"><div id="cnt" style="flex:1;font-size:15px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
