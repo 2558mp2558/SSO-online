@@ -206,7 +206,7 @@ function handleApi(req, res, route) {
     if (route === 'voice-start') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const session = crypto.randomBytes(12).toString('hex');
-      liveVoice = { adminId: id, session: session };
+      liveVoice = { adminId: id, session: session, participants: new Set() };
       toAll('voice-start', { adminId: id, session: session });
       return json(res, 200, { ok: true, session: session });
     }
@@ -224,11 +224,14 @@ function handleApi(req, res, route) {
       const dest = users.get(target);
       if (!dest || !dest.conns.size || target === id) return json(res, 404, { error: 'offline' });
       if (sig.type === 'ready') {
-        if (adm || target !== liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
+        if (adm || target !== liveVoice.adminId || id === liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
+        liveVoice.participants.add(id);
       } else if (sig.type === 'offer') {
-        if (!adm || id !== liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
+        if (!adm || id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
       } else if (sig.type === 'answer' || sig.type === 'ice') {
-        if ((adm && id !== liveVoice.adminId) || (!adm && target !== liveVoice.adminId)) return json(res, 403, { error: 'forbidden' });
+        if (adm) {
+          if (id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
+        } else if (target !== liveVoice.adminId || !liveVoice.participants.has(id)) return json(res, 403, { error: 'forbidden' });
       } else return json(res, 400, { error: 'bad_signal' });
       const payload = { from: id, session: liveVoice.session, signal: sig };
       toUsers([target], 'voice-signal', payload);
@@ -294,7 +297,11 @@ function handleEvents(req, res, q) {
   const ka = setInterval(function () { res.write(': ping\n\n'); }, 25000);
   req.on('close', function () {
     clearInterval(ka); u.conns.delete(res);
-    if (!u.conns.size) { users.delete(id); }
+    if (!u.conns.size) {
+      users.delete(id);
+      if (liveVoice && liveVoice.adminId === id) { liveVoice = null; toAll('voice-stop', { ok: true }); }
+      else if (liveVoice) liveVoice.participants.delete(id);
+    }
     pushPeople();
   });
 }
