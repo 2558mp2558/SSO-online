@@ -41,6 +41,8 @@ button:disabled,select:disabled{opacity:.6}
 .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
 #mq{flex:none;border:2px solid #e5484d;border-radius:10px;overflow:hidden;white-space:nowrap;background:var(--card);padding:3px 0}
 #mqt{display:inline-block;color:#e5484d;font-weight:700;font-size:12px;animation:mq 85s linear infinite}
+#mqt a{color:#168bff;text-decoration:underline;font-weight:800;cursor:pointer}
+#mqt a:visited{color:#168bff}
 @keyframes mq{from{transform:translateX(480px)}to{transform:translateX(-100%)}}
 @media(prefers-reduced-motion:reduce){#mqt{animation:none;white-space:normal}}
 .m small{display:block;color:var(--mut);font-size:11px;margin-bottom:2px}
@@ -58,7 +60,7 @@ button:disabled,select:disabled{opacity:.6}
 </style>
 </head>
 <body>
-<div id="mq"><div id="mqt">จังหวัด สมุทรสงคราม อ.เมือง อ.อัมพวา อ.บางคนที ยินดีต้อนรับ เข้าสู่ เว็บแชทสดหาเพื่อนคุยในระยะใกล้ๆฟรี24ชั่วโมง มีวิทยุออนไลน์ให้ฟังฟรี24ชั่วโมง (แชทมีระบบส่งรูปภาพและส่งเสียงได้) แชทแบ่งออกเป็น2ห้อง ดังนี้ หาเพื่อนคุย และ เช็คด่านตรวจในจังหวัด ท่านสามารถกระซิบคุยส่วนตัวกันได้ฟรี ผู้ดูแลแชทจะใช้ชื่อสีแดงในการพิมพ์คุยและมีสิทธิ์ลบข้อความหรือลบรูปหรือลบเสียงหากท่านทำการปั่นป่วนห้องแชท ติดต่อผู้พัฒนาแอพได้ที่เฟสบุ๊ค มานพ อาญชนะปาน</div></div>
+<div id="mq"><div id="mqt">จังหวัด สมุทรสงคราม ยินดีต้อนรับ อ.เมือง อ.อัมพวา อ.บางคนที เข้าสู่เว็บ แชทสด ในเว็บมีระบบทักแชทคุยข้อความกันแบบส่วนตัวได้ด้วย หรือ กระซิบคุยกัน นอกจากนี้ยังมีระบบส่งรูปภาพและกดไมค์พูดได้ฟรี เว็บแชทมี 2 ห้องคือ ห้องแชททั่วไป และ ห้องเช็คด่านตรวจในจังหวัด ผู้ดูแลแชทจะใช้ชื่อสีแดงในการพิมพ์คุยเท่านั้น ผู้แชทจะชื่อสีเขียวเหมือนกันทั้งหมด ยกเว้นชื่อสีม่วง คือ VIP เช่าชื่อสีม่วง 30 วัน 100 บาท สนใจติดต่อ <a href="https://www.facebook.com/share/1UYhVNTMB3/" target="_blank" rel="noopener noreferrer">คลิ๊ก</a></div></div>
 <div id="gallery" aria-label="ภาพประชาสัมพันธ์"><div id="galleryTrack"></div></div>
 <div id="galleryAdmin"><button id="galleryAdd" class="p">＋ เพิ่มรูปภาพ</button><span class="mut">จัดการรูปภาพ (เฉพาะแอดมิน)</span><input id="galleryFile" type="file" accept="image/*" hidden></div>
 <div id="rd" class="card" style="flex:none;display:flex;gap:6px;align-items:center;padding:4px 6px"><button id="rdb" style="flex:none;min-width:34px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:64px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:11px;min-width:40px"></span></div>
