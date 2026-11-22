@@ -24,8 +24,16 @@ input,select{flex:1;width:100%}
 .chip{cursor:pointer}
 .vp{background:transparent;border:0;padding:4px 8px;min-height:36px;font-size:14px}
 #vb,#ib,#dib,#dvb,#liveMic{flex:none;padding:8px 12px;font-size:18px}
-#liveMic{display:none;background:#a3262d;color:#fff;border:0;font-weight:700}
+#liveMic{display:none;flex:1;width:100%;min-height:46px;background:#a3262d;color:#fff;border:0;font-weight:800;font-size:16px;letter-spacing:.2px}
 #liveMic.on{background:#e5484d}
+#liveMicBar{display:none;flex:none;align-items:center;gap:8px;margin:0;padding:6px 8px;background:#111;border:1px solid #3a2426;border-radius:12px;position:relative;z-index:2}
+#liveMicHint{flex:1;line-height:1.35}
+#composer{flex:none;position:relative;z-index:2}
+#main{flex:1;display:flex;gap:8px;min-height:0}
+#msgs{overscroll-behavior:contain;scrollbar-width:thin}
+#liveMicBar #liveMic{flex:0 0 auto;width:auto;min-width:190px}
+@media(max-width:380px){#liveMicBar{gap:5px;padding:5px}#liveMicBar #liveMic{min-width:0;font-size:13px;padding:7px 9px}#liveMicHint{font-size:10px}}
+#liveMicHint{font-size:11px;color:var(--mut)}
 #liveAudio{display:none}
 .pic{max-width:100%;max-height:220px;border-radius:10px;display:block;cursor:pointer}
 #vb.rec,#dvb.rec{background:#e5484d;color:#fff;border-color:#e5484d;font-size:14px}
@@ -74,8 +82,9 @@ button:disabled,select:disabled{opacity:.6}
     <select id="dist"><option value="">เลือกอำเภอ…</option><option value="0">อ.เมือง</option><option value="1">อ.อัมพวา</option><option value="2">อ.บางคนที</option></select>
   </div>
 </div>
-<div id="main"><div id="msgs"></div><div id="side"><div class="mut" style="margin-bottom:6px">ผู้ออนไลน์</div><div class="people" id="ppl"></div></div></div>
-<div class="row"><button id="liveMic" type="button">🎙️ เริ่มพูดสด</button><input id="ci" maxlength="200" placeholder="พิมพ์ข้อความ…"><button id="ib" title="ส่งรูปภาพ">🖼️</button><input id="imf" type="file" accept="image/*" hidden style="display:none"><button id="vb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="cb" class="p" disabled>ส่ง</button></div>
+<div id="main"><div id="msgs" aria-live="polite"></div><div id="side"><div class="mut" style="margin-bottom:6px">ผู้ออนไลน์</div><div class="people" id="ppl"></div></div></div>
+<div class="row" id="liveMicBar"><button id="liveMic" type="button">🎙️ เริ่มพูดสดทั้ง 2 ห้อง</button><span id="liveMicHint">เฉพาะแอดมิน · เสียงอย่างเดียว</span></div>
+<div class="row" id="composer"><input id="ci" maxlength="200" placeholder="พิมพ์ข้อความ…"><button id="ib" title="ส่งรูปภาพ">🖼️</button><input id="imf" type="file" accept="image/*" hidden style="display:none"><button id="vb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="cb" class="p" disabled>ส่ง</button></div>
 <div id="an" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:11;align-items:center;justify-content:center;padding:20px"><div class="card" style="max-width:420px;width:100%;text-align:center;border:3px solid #e5484d;padding:24px 16px"><div id="ant" style="color:#e5484d;font-size:30px;font-weight:800;line-height:1.4;word-break:break-word"></div><div class="mut" style="margin-top:14px">📢 ประกาศจากผู้ดูแลระบบ · แตะเพื่อปิด</div></div></div>
 <div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:95%;max-height:90%"><div id="lbs" style="position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:13px;padding:0 12px"></div><button id="lbx" style="position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;min-height:36px;padding:4px 12px;background:rgba(255,255,255,.15);color:#fff;border:0">✕</button></div>
 <div id="dmw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;align-items:center;justify-content:center;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
@@ -183,9 +192,9 @@ async function voiceStart(){
   catch(e){note("เปิดไมโครโฟนไม่ได้ กรุณาอนุญาตการใช้ไมค์");return}
   var r=await voiceApi("voice-start",{});if(r._s!==200){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null;note("เริ่มถ่ายทอดสดไม่สำเร็จ");return}
   liveSession=r.session||"";
-  $("liveMic").textContent="⏹ หยุดพูดสด";$("liveMic").classList.add("on");note("กำลังถ่ายทอดสดไปทั้ง 2 ห้อง");
+  $("liveMic").textContent="⏹ หยุดพูดสด";$("liveMic").classList.add("on");$("liveMicHint").textContent="กำลังพูดสด · แชตยังใช้งานได้";note("กำลังถ่ายทอดสดไปทั้ง 2 ห้อง");
 }
-async function voiceStop(){if(!admin)return;await voiceApi("voice-stop",{session:liveSession});voiceCloseAll();if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}liveSession="";$("liveMic").textContent="🎙️ เริ่มพูดสด";$("liveMic").classList.remove("on");note(ph())}
+async function voiceStop(){if(!admin)return;await voiceApi("voice-stop",{session:liveSession});voiceCloseAll();if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}liveSession="";$("liveMic").textContent="🎙️ เริ่มพูดสดทั้ง 2 ห้อง";$("liveMic").classList.remove("on");$("liveMicHint").textContent="เฉพาะแอดมิน · เสียงอย่างเดียว";note(ph())}
 $("liveMic").onclick=function(){if(!admin)return;if(liveStream)voiceStop();else voiceStart()};
 
 au.onplay=au.onpause=au.onended=function(){render();renderDm()};
@@ -197,7 +206,7 @@ function render(){
   var all=people.filter(function(p){return p.id!==uid}),nb=all.filter(function(p){return p.bot}).length;
   var un={};dm.forEach(function(m){if(m.a!==uid&&m.ts>(seen[m.a]||loadTs))un[m.a]=1});var nu=Object.keys(un).length;
   $("cnt").textContent=(conn?"🟢":"🔴")+" ออนไลน์ "+(all.length-nb+1)+" คน"+(nb?" · 🤖 "+nb+" บอท":"")+(admin?" · 👑":"")+(nu?" · 🔔 "+nu+" ข้อความส่วนตัว":"");
-  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("liveMic").style.display=admin?"":"none";
+  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("liveMicBar").style.display=admin?"flex":"none";
   var pe=$("ppl"),box=$("msgs");pe.textContent="";box.textContent="";
   if(d===null){pe.className="mut";pe.textContent="เลือกอำเภอของคุณเพื่อเริ่มแชต";
     var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="เลือกอำเภอด้านบนก่อนนะ";box.appendChild(h);return}
@@ -416,7 +425,7 @@ galleryLoad();
 
 // ---------- แอดมิน ----------
 $("adm").onclick=function(){
-  if(admin){if(liveStream)voiceStop();ak="";try{localStorage.removeItem("smak")}catch(e){}connect();return}
+  if(admin){if(liveStream)voiceStop();voiceCloseAll();ak="";try{localStorage.removeItem("smak")}catch(e){}connect();return}
   var k=prompt("ใส่รหัสแอดมิน");if(!k)return;
   ak=k.trim();connect(true);
 };
@@ -444,7 +453,7 @@ function connect(tryAdmin){
     uid=x.me.id;admin=!!x.me.admin;banUntil=x.me.ban||0;myPv=x.me.pv||0;
     if(tryAdmin&&!admin){ak="";note("รหัสแอดมินไม่ถูกต้อง")}
     else if(ak){try{localStorage.setItem("smak",ak)}catch(e){}}
-    if(!ak)admin=false;$("liveMic").style.display=admin?"":"none";
+    if(!ak)admin=false;$("liveMicBar").style.display=admin?"flex":"none";
     chat=[].concat(x.msgs.general||[],x.msgs.checkpoint||[]);
     people=x.people||[];dm=x.dms||[];ann=x.announce||null;showAnn();bans=x.bans||{};
     if(myPic&&!myPv)uploadPic();
