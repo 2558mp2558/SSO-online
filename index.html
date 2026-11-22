@@ -166,13 +166,13 @@ function render(){
   if(!list.length)pe.textContent="ยังไม่มีคนอื่นออนไลน์ในระยะ";
   list.forEach(function(p){
     var c=document.createElement("div"),b=document.createElement("b");c.className="chip";
-    b.textContent=(un[p.id]?"🔔 ":"")+p.n+(p.bot?" 🤖":"")+sfx(p);c.title="แตะเพื่อกระซิบ";if(tone(p))b.style.color=tone(p);
+    b.textContent=(un[p.id]?"🔔 ":"")+p.n+(p.bot?" (ผู้ช่วยระบบ 🤖)":"")+sfx(p);c.title="แตะเพื่อกระซิบ";if(tone(p))b.style.color=tone(p);
     c.onclick=function(){openDm(p)};c.appendChild(avEl(p.id,p.n,p.pv));c.appendChild(b);c.appendChild(document.createTextNode(far(p.d)));pe.appendChild(c)});
   chat.filter(function(m){return (m.r||"general")===room}).sort(function(a,b){return a.ts-b.ts}).forEach(function(m){
     if(!AREAS[m.d])return;var mine=m.u===uid;if(!mine&&!ok(m.d))return;
     var e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
+    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" (ผู้ช่วยระบบ 🤖)":""),m.adm,m.vip));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
     if(admin){
@@ -221,7 +221,7 @@ Array.prototype.forEach.call(tb,function(b){b.onclick=function(){room=b.dataset.
 // ---------- ข้อความกระซิบ ----------
 function openDm(p){
   dmPeer=p;
-  $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" 🤖":"")+sfx(p);$("dmt").style.color=tone(p);
+  $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" (ผู้ช่วยระบบ 🤖)":"")+sfx(p);$("dmt").style.color=tone(p);
   updVip();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
   $("dmi").placeholder="พิมพ์ข้อความส่วนตัว…";
   $("dmw").style.display="flex";renderDm();render();
