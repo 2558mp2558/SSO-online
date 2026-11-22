@@ -10,68 +10,16 @@ const MAX_MSGS = 300, MAX_DMS = 2000;
 
 let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {} };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8'))); } catch (e) {}
+// ลบข้อความของบอทที่ค้างอยู่ในข้อมูลเดิม
+db.msgs.general = (db.msgs.general || []).filter(function (m) { return !m.bot; });
+db.msgs.checkpoint = (db.msgs.checkpoint || []).filter(function (m) { return !m.bot; });
+db.dms = (db.dms || []).filter(function (m) { return !m.bot; });
 let saveT;
 function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.writeFile(DATA, JSON.stringify(db), function () {}); }, 1500); }
 
 const users = new Map(); // id -> {conns:Set, n, d, adm}
 const lastSend = new Map();
 
-// ---------- บอทแชต 50 ตัว คุยกันตลอดวัน (ห้องแชตทั่วไปเท่านั้น) ----------
-const BOTS = ["น้องฟ้า","พี่โจ้","ลุงชาติ","ป้าแต๋ว","น้ำฝน","บอยแม่กลอง","แพรวา","ต้นกล้า","ครูหนุ่ม","เจ๊อ้อย","หมูหยอง","ไก่ทอด","มะลิ","พิมพ์","โอ๊ต","เบสท์","กานต์","นุ่น","ปลาทู","ส้มโอ","ลิ้นจี่","ตาโต","อาร์ม","แจม","กุ้ง","ปอนด์","ฝ้าย","เมษา","ตุ๊กตา","บอสน้อย","ลุงสมชัย","พี่หนึ่ง","น้องเมย์","ครูแอน","เจ้ปุ๊","แม็ก","มินท์","เก่ง","ใบเตย","จ๋า","ฟิล์ม","ก้อง","บีม","ออมสิน","เนย","ภูมิ","ทราย","โบว์","ไผ่","ข้าวปั้น"].map(function (n, i) { return { id: 'bot' + i, n: n, d: i % 3, pv: 0, adm: false, bot: true }; });
-const BOTMAP = {}; BOTS.forEach(function (b) { BOTMAP[b.id] = b; });
-const pick = a => a[Math.floor(Math.random() * a.length)];
-const SCRIPTS = [
-["วันนี้อากาศดีจังเลย","จริง ลมเย็นๆ เหมาะกับไปตลาดน้ำอัมพวา","ไปกี่โมงดี ไปเช้าๆ ไหม","ไปสักแปดโมงกำลังดี คนยังไม่เยอะ"],
-["มีใครรู้ร้านปลาทูแม่กลองอร่อยๆ ไหม","ร้านแถวตลาดแม่กลองนี่แหละ ปลาทูตัวมันเลย","ขอบคุณนะ เดี๋ยวไปลอง","ไปแล้วอย่าลืมซื้อน้ำพริกกลับบ้านด้วย"],
-["ใครไปตลาดร่มหุบมาบ้าง","ไปเมื่อวาน รถไฟวิ่งผ่านตื่นเต้นมาก","คนเยอะไหม","เยอะพอสมควร ไปเช้าดีกว่านะ"],
-["ส้มโอบ้านเราหวานจริงๆ","ใช่ ซื้อฝากที่ทำงานทุกทีเลย","เปลือกหนาแต่เนื้อฉ่ำมาก"],
-["เย็นนี้ฝนจะตกไหม ฟ้าเริ่มครึ้มแล้ว","เห็นเมฆเยอะเหมือนกัน พกร่มไปดีกว่า","โอเค ขอบคุณที่เตือน"],
-["หิวแล้ว วันนี้กินอะไรดี","ก๋วยเตี๋ยวเรือไหม","เอาสิ เส้นเล็กน้ำตกใช่ไหม","ใช่เลย ใส่หมูกรอบด้วย"],
-["ไปดูหิ่งห้อยที่อัมพวากันไหมสุดสัปดาห์นี้","ดีเลย ต้องจองเรือก่อนหรือเปล่า","จองไว้ก่อนดีกว่า ช่วงเสาร์อาทิตย์คนเยอะ","โอเค เดี๋ยวโทรจองให้"],
-["กาแฟร้านใหม่แถวบางคนทีใครเคยลองบ้าง","เคยไปแล้ว ร้านน่ารัก กาแฟหอมดี","ราคาโอเคไหม","โอเคเลย แก้วละไม่ถึงร้อย"],
-["ถนนช่วงนี้รถเยอะไหม จะออกจากบ้านตอนบ่าย","ตอนบ่ายโล่งๆ แต่เย็นๆ เริ่มติด","งั้นออกก่อนสี่โมงดีกว่า"],
-["สุดสัปดาห์นี้มีงานวัดแถวไหนบ้างไหม","ยังไม่เห็นประกาศเลย ถ้าเจอบอกด้วยนะ","ได้เลย เดี๋ยวมาอัปเดต"],
-["มะพร้าวน้ำหอมบ้านเรานี่หวานเย็นชื่นใจ","ซื้อกินริมทางทุกวันเลย","วันละลูกสบายๆ"],
-["เมื่อคืนนอนหลับสบายไหม","หลับสบาย ลมเย็นดี","ดีจัง ฉันตื่นมาตั้งแต่ตีห้า"]
-];
-const FILL = ["สวัสดีทุกคน","555 ขำมาก","จริงด้วย","เห็นด้วยเลย","ขอบคุณครับ","โอเคเลย","ว้าว น่าไปมาก","ใครมีที่แนะนำบ้างไหม","วันนี้ยุ่งทั้งวันเลย","เดี๋ยวมาใหม่นะ","สู้ๆ นะทุกคน","น่ารักจัง"];
-const DM_REPLY = ["สวัสดีครับ ผมเป็นบอทประจำห้องแชต ยังคุยได้ไม่เยอะ 🤖","ขอบคุณที่ทักนะ แต่ผมเป็นบอทครับ","ได้รับข้อความแล้วครับ ผมเป็นบอทเลยตอบได้แค่นี้ 🤖"];
-function botSay(b, t, ts) {
-  const m = { u: b.id, n: b.n, d: b.d, r: 'general', k: 't', t: t, ts: ts || Date.now(), adm: false, pv: 0, bot: true };
-  db.msgs.general.push(m);
-  while (db.msgs.general.length > MAX_MSGS) db.msgs.general.shift();
-  save(); toAll('msg', m);
-}
-function timeLines() {
-  const h = (new Date().getUTCHours() + 7) % 24, a = FILL.slice(); // เวลาไทย
-  if (h >= 5 && h < 11) a.push('อรุณสวัสดิ์ทุกคน ☀️', 'ตื่นแล้ว วันนี้ไปตลาดเช้ากันไหม');
-  else if (h >= 11 && h < 14) a.push('พักเที่ยงแล้ว ทุกคนกินข้าวหรือยัง', 'เที่ยงนี้กินอะไรกันดี');
-  else if (h >= 14 && h < 17) a.push('บ่ายแล้ว ง่วงจัง ต้องกินกาแฟ', 'แดดร้อนมาก ระวังด้วยนะทุกคน');
-  else if (h >= 17 && h < 21) a.push('เลิกงานแล้ว วันนี้เหนื่อยไหม', 'เย็นนี้ลมเย็นดี น่าไปเดินเล่น');
-  else a.push('ดึกแล้ว ฝันดีทุกคนนะ 🌙', 'ยังไม่นอนอีกหรือ');
-  return a;
-}
-let script = null, si = 0, pa = null, pb = null;
-function botTick() {
-  let gap = 7000 + Math.random() * 15000;
-  if (!script && Math.random() >= 0.3) { script = pick(SCRIPTS); si = 0; pa = pick(BOTS); do { pb = pick(BOTS); } while (pb === pa); }
-  if (script) { botSay(si % 2 ? pb : pa, script[si]); si++; if (si >= script.length) { script = null; gap = 15000 + Math.random() * 30000; } }
-  else botSay(pick(BOTS), pick(timeLines()));
-  setTimeout(botTick, gap);
-}
-function botStart() {
-  const recent = db.msgs.general.some(function (m) { return m.bot && Date.now() - m.ts < 3600000; });
-  if (!recent) {
-    let t = Date.now() - 5400000;
-    for (let q = 0; q < 5; q++) {
-      const sc = pick(SCRIPTS), a = pick(BOTS); let b = pick(BOTS);
-      if (a === b) b = BOTS[(+a.id.slice(3) + 1) % BOTS.length];
-      sc.forEach(function (l, i) { t += 30000 + Math.random() * 60000; botSay(i % 2 ? b : a, l, t); });
-      t += 600000;
-    }
-  }
-  setTimeout(botTick, 3000);
-}
 const uidOf = tk => crypto.createHash('sha256').update(tk).digest('hex').slice(0, 16);
 const okTk = tk => typeof tk === 'string' && /^[0-9a-f]{16,100}$/.test(tk);
 function isAdmin(ak) {
@@ -95,7 +43,7 @@ function people() {
   users.forEach(function (u, id) {
     if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id) });
   });
-  return out.concat(BOTS);
+  return out;
 }
 const pushPeople = () => toAll('people', people());
 
@@ -149,7 +97,7 @@ function handleApi(req, res, route) {
     if (route === 'vip') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), tu = users.get(t);
-      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
       if (b.on) db.vips[t] = Date.now() + 30 * 86400000; else delete db.vips[t];
       save(); pushPeople();
       return json(res, 200, { ok: true });
@@ -166,7 +114,7 @@ function handleApi(req, res, route) {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), mins = Math.max(0, Math.min(1440, +b.mins || 0));
       const tu = users.get(t);
-      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
       if (mins) db.bans[t] = Date.now() + mins * 60000; else delete db.bans[t];
       save();
       toUsers([t], 'ban', { until: banOf(t) });
@@ -199,11 +147,6 @@ function handleApi(req, res, route) {
       db.dms.push(m);
       while (db.dms.length > MAX_DMS) db.dms.shift();
       save(); toUsers([id, to], 'dm', m);
-      const bb = BOTMAP[to];
-      if (bb) setTimeout(function () {
-        const r = { a: to, b: id, an: bb.n, adm: false, pv: 0, ts: Date.now(), k: 't', t: pick(DM_REPLY), bot: true };
-        db.dms.push(r); save(); toUsers([id], 'dm', r);
-      }, 1500 + Math.random() * 2500);
       return json(res, 200, { ok: true });
     }
 
@@ -268,7 +211,7 @@ setInterval(function () {
 }, 60000);
 
 server.listen(PORT, function () {
-  botStart();
+  save(); // บันทึกข้อมูลหลังลบข้อความบอทเดิม
   console.log('เปิดที่ http://localhost:' + PORT);
-  if (!ADMIN_KEY) console.log('m159357p');
+  if (!ADMIN_KEY) console.log('ยังไม่ได้ตั้ง ADMIN_KEY จึงใช้ระบบแอดมินไม่ได้');
 });
