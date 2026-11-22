@@ -8,9 +8,10 @@ const DATA = path.join(__dirname, 'data.json');
 const MEDIA_TTL = 60 * 60 * 1000; // รูป/เสียงหมดอายุใน 1 ชม.
 const MAX_MSGS = 300, MAX_DMS = 2000;
 
-let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, gallery: [] };
+let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, djs: {}, gallery: [] };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8'))); } catch (e) {}
 db.gallery = Array.isArray(db.gallery) ? db.gallery : [];
+db.djs = db.djs || {};
 // ลบข้อความของบอทที่ค้างอยู่ในข้อมูลเดิม
 db.msgs.general = (db.msgs.general || []).filter(function (m) { return !m.bot; });
 db.msgs.checkpoint = (db.msgs.checkpoint || []).filter(function (m) { return !m.bot; });
@@ -75,6 +76,7 @@ function isAdmin(ak) {
 const clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 const pvOf = id => (db.pics[id] ? db.pics[id].v : 0);
 const vipOf = id => db.vips[id] > Date.now();
+const djOf = id => db.djs[id] > Date.now();
 const banOf = id => (db.bans[id] > Date.now() ? db.bans[id] : 0);
 
 function sse(res, ev, data) { res.write('event: ' + ev + '\ndata: ' + JSON.stringify(data) + '\n\n'); }
@@ -88,7 +90,7 @@ function toAdmins(ev, data) { users.forEach(function (u) { if (u.adm) u.conns.fo
 function people() {
   const out = [];
   users.forEach(function (u, id) {
-    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id) });
+    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id), dj: djOf(id) });
   });
   return out.concat(BOTS);
 }
@@ -175,8 +177,17 @@ function handleApi(req, res, route) {
       return json(res, 200, { ok: true });
     }
 
-    if (route === 'live') {
+    if (route === 'dj') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
+      const t = String(b.target || ''), tu = users.get(t);
+      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (b.on) db.djs[t] = Date.now() + 30 * 86400000; else { delete db.djs[t]; if (live && live.id === t) stopLive(); }
+      save(); pushPeople();
+      return json(res, 200, { ok: true });
+    }
+
+    if (route === 'live') {
+      if (!adm && !djOf(id)) return json(res, 403, { error: 'forbidden' });
       if (b.st === 'start') {
         live = { id: id, n: name, last: Date.now() };
         toAll('live', { on: true, n: name, u: id });
@@ -238,7 +249,7 @@ function handleApi(req, res, route) {
       if (route === 'send') {
         if (!(b.d === 0 || b.d === 1 || b.d === 2)) return json(res, 400, { error: 'bad' });
         const r = b.r === 'checkpoint' ? 'checkpoint' : 'general';
-        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), pv: pvOf(id) }, c);
+        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id) }, c);
         const list = db.msgs[r]; list.push(m);
         while (list.length > MAX_MSGS) list.shift();
         save(); toAll('msg', m);
@@ -247,7 +258,7 @@ function handleApi(req, res, route) {
 
       const to = String(b.to || '');
       if (!to || to === id) return json(res, 400, { error: 'bad' });
-      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), pv: pvOf(id), ts: now }, c);
+      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id), ts: now }, c);
       db.dms.push(m);
       while (db.dms.length > MAX_DMS) db.dms.shift();
       save(); toUsers([id, to], 'dm', m);
@@ -273,7 +284,7 @@ function handleEvents(req, res, q) {
   if (!u) { u = { conns: new Set() }; users.set(id, u); }
   u.conns.add(res); u.adm = adm;
   sse(res, 'init', {
-    me: { id: id, admin: adm, ban: banOf(id), pv: pvOf(id) },
+    me: { id: id, admin: adm, ban: banOf(id), pv: pvOf(id), dj: djOf(id) },
     msgs: db.msgs,
     people: people(),
     dms: db.dms.filter(function (m) { return m.a === id || m.b === id; }),
@@ -332,6 +343,7 @@ setInterval(function () {
   if (ch) save();
   let vc = false;
   Object.keys(db.vips).forEach(function (k) { if (db.vips[k] <= now) { delete db.vips[k]; vc = true; } });
+  Object.keys(db.djs).forEach(function (k) { if (db.djs[k] <= now) { delete db.djs[k]; vc = true; if (live && live.id === k) stopLive(); } });
   if (vc) { save(); pushPeople(); }
 }, 60000);
 

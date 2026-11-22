@@ -79,7 +79,7 @@ button:disabled,select:disabled{opacity:.6}
 <div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:95%;max-height:90%"><div id="lbs" style="position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:13px;padding:0 12px"></div><button id="lbx" style="position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;min-height:36px;padding:4px 12px;background:rgba(255,255,255,.15);color:#fff;border:0">✕</button></div>
 <div id="dmw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;align-items:center;justify-content:center;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
  <div class="card" style="width:100%;max-width:440px;height:75%;display:flex;flex-direction:column;gap:8px">
-  <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
+  <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="ddj" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
   <div id="dmm" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
   <div class="mut">ส่งถึงผู้รับเท่านั้น แต่ไม่ได้เข้ารหัส ผู้ดูแลเซิร์ฟเวอร์อาจเปิดไฟล์ข้อมูลอ่านได้ อย่าส่งข้อมูลสำคัญ</div>
   <div class="row"><input id="dmi" maxlength="200"><button id="dib" title="ส่งรูปภาพ">🖼️</button><button id="dvb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="dmb" class="p">ส่ง</button></div>
@@ -161,14 +161,14 @@ function body(m){
 var au=new Audio(),curKey="";
 au.onplay=au.onpause=au.onended=function(){render();renderDm()};
 function playV(m){var key=(m.u||m.a)+"|"+m.ts;if(curKey===key&&!au.paused){au.pause();return}curKey=key;au.src=m.au;au.play().catch(function(){})}
-function sfx(o){return o.adm?" (ผู้ดูแลแชท)":o.vip?" (vip)":""}
-function tone(o){return o.adm?"#e5484d":o.vip?"var(--vip)":""}
-function nameSpan(name,isAdm,isVip){var o={adm:isAdm,vip:isVip},s=document.createElement("span");s.textContent=name+sfx(o);if(tone(o))s.style.cssText="color:"+tone(o)+";font-weight:700";return s}
+function sfx(o){return o.adm?" (ผู้ดูแลแชท)":o.dj?" (ดีเจDJ)":o.vip?" (vip)":""}
+function tone(o){return o.adm?"#e5484d":o.dj?"#38bdf8":o.vip?"var(--vip)":""}
+function nameSpan(name,isAdm,isVip,isDj){var o={adm:isAdm,vip:isVip,dj:isDj},s=document.createElement("span");s.textContent=name+sfx(o);if(tone(o))s.style.cssText="color:"+tone(o)+";font-weight:700";return s}
 function render(){
   var all=people.filter(function(p){return p.id!==uid}),nb=all.filter(function(p){return p.bot}).length;
   var un={};dm.forEach(function(m){if(m.a!==uid&&m.ts>(seen[m.a]||loadTs))un[m.a]=1});var nu=Object.keys(un).length;
   $("cnt").textContent=(conn?"🟢":"🔴")+" ออนไลน์ "+(all.length-nb+1)+" คน"+(nb?" · 🤖 "+nb+" บอท":"")+(admin?" · 👑":"")+(nu?" · 🔔 "+nu+" ข้อความส่วนตัว":"");
-  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("lvb").style.display=admin?"":"none";
+  updVip();updDj();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("lvb").style.display=(admin||myDj)?"":"none";
   var pe=$("ppl"),box=$("msgs");pe.textContent="";box.textContent="";
   if(d===null){pe.className="mut";pe.textContent="เลือกอำเภอของคุณเพื่อเริ่มแชต";
     var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="เลือกอำเภอด้านบนก่อนนะ";box.appendChild(h);return}
@@ -183,7 +183,7 @@ function render(){
     if(!AREAS[m.d])return;var mine=m.u===uid;if(!mine&&!ok(m.d))return;
     var e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
+    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip,m.dj));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
     if(admin){
@@ -233,7 +233,7 @@ Array.prototype.forEach.call(tb,function(b){b.onclick=function(){room=b.dataset.
 function openDm(p){
   dmPeer=p;
   $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" 🤖":"")+sfx(p);$("dmt").style.color=tone(p);
-  updVip();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
+  updVip();updDj();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
   $("dmi").placeholder="พิมพ์ข้อความส่วนตัว…";
   $("dmw").style.display="flex";renderDm();render();
 }
@@ -245,7 +245,7 @@ function renderDm(){
   list.forEach(function(m){
     var mine=m.a===uid,e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
+    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip,m.dj));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
     s.insertBefore(avEl(m.a,mine?me:m.an,m.pv),s.firstChild);
     e.appendChild(s);e.appendChild(body(m));box.appendChild(e);
   });
@@ -276,6 +276,26 @@ $("dvip").onclick=function(){
   if(!on&&!confirm("แต่งตั้ง "+dmPeer.n+" เป็น VIP นาน 30 วัน?"))return;
   api("/api/vip",{target:dmPeer.id,on:!on});
 };
+
+// ---------- แต่งตั้ง DJ (แอดมิน) ----------
+function updDj(){
+  var b=$("ddj");
+  if(!dmPeer||!admin||dmPeer.bot||dmPeer.adm||dmPeer.id===uid){b.style.display="none";return}
+  var p=peerP();b.style.display="";b.textContent=(p&&p.dj)?"🎧 ยกเลิก DJ":"🎧 แต่งตั้ง DJ 30 วัน";
+}
+$("ddj").onclick=function(){
+  if(!admin||!dmPeer)return;var p=peerP(),on=!!(p&&p.dj);
+  if(!on&&!confirm("แต่งตั้ง "+dmPeer.n+" เป็น DJ นาน 30 วัน? (ชื่อสีฟ้า และพูดสดได้)"))return;
+  api("/api/dj",{target:dmPeer.id,on:!on});
+};
+// สถานะ DJ ของตัวเอง (อ่านจากรายชื่อผู้ออนไลน์)
+var myDj=false;
+function syncDj(){
+  var s=people.filter(function(p){return p.id===uid})[0];
+  if(!s)return;
+  var v=!!s.dj;
+  if(v!==myDj){myDj=v;if(!v&&!admin&&lvOn)lvStop(false)}
+}
 
 // ---------- วิทยุออนไลน์ ----------
 // เพิ่มสถานีได้ที่นี่ (ลิงก์ต้องขึ้นต้นด้วย https://)
@@ -466,7 +486,7 @@ function lvStop(tell){
   lvShow();
 }
 $("lvb").onclick=async function(){
-  if(!admin)return;
+  if(!admin&&!myDj)return;
   if(lvOn){lvStop();return}
   if(mr){note("กำลังอัดข้อความเสียงอยู่ ปิดก่อนนะ");return}
   if(!AC()||!navigator.mediaDevices){note("เบราว์เซอร์นี้ไม่รองรับการพูดสด");return}
@@ -515,8 +535,9 @@ function connect(tryAdmin){
     if(!ak)admin=false;
     chat=[].concat(x.msgs.general||[],x.msgs.checkpoint||[]);
     people=x.people||[];dm=x.dms||[];ann=x.announce||null;showAnn();bans=x.bans||{};
+    myDj=!!x.me.dj;syncDj();
     lvLive=x.live||null;
-    if(lvOn&&!admin)lvStop(false);
+    if(lvOn&&!admin&&!myDj)lvStop(false);
     else if(lvOn&&!(lvLive&&lvLive.u===uid)){lvLive={on:true,n:me,u:uid};api("/api/live",{st:"start",n:me})}
     lvShow();
     if(myPic&&!myPv)uploadPic();
@@ -524,7 +545,7 @@ function connect(tryAdmin){
   });
   es.addEventListener("msg",function(e){chat.push(JSON.parse(e.data));if(chat.length>300)chat.shift();render()});
   es.addEventListener("del",function(e){var x=JSON.parse(e.data);chat=chat.filter(function(m){return !(m.u===x.u&&m.ts===x.ts&&(m.r||"general")===x.r)});render()});
-  es.addEventListener("people",function(e){people=JSON.parse(e.data);render()});
+  es.addEventListener("people",function(e){people=JSON.parse(e.data);syncDj();render()});
   es.addEventListener("dm",function(e){dm.push(JSON.parse(e.data));renderDm();render()});
   es.addEventListener("ban",function(e){banUntil=JSON.parse(e.data).until||0;if(banUntil)chkBan();else note(ph())});
   es.addEventListener("announce",function(e){ann=JSON.parse(e.data);showAnn()});
