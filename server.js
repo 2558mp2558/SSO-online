@@ -110,6 +110,16 @@ function handleApi(req, res, route) {
       return json(res, 200, { ok: true });
     }
 
+    if (route === 'del') {
+      if (!adm) return json(res, 403, { error: 'forbidden' });
+      const r = b.r === 'checkpoint' ? 'checkpoint' : 'general', ts = +b.ts, uu = String(b.u || '');
+      const list = db.msgs[r], i = list.findIndex(function (m) { return m.u === uu && m.ts === ts; });
+      if (i < 0) return json(res, 404, { error: 'not found' });
+      list.splice(i, 1);
+      save(); toAll('del', { r: r, u: uu, ts: ts });
+      return json(res, 200, { ok: true });
+    }
+
     if (route === 'ban') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), mins = Math.max(0, Math.min(1440, +b.mins || 0));

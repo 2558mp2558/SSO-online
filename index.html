@@ -6,9 +6,9 @@
 <title>แชตคนใกล้ตัว สมุทรสงคราม</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
-color-scheme:dark;--vip:#c084fc;--bg:#000;--card:#14181f;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--vip:#c084fc;--bg:#000;--card:#14181f;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}}
-:root[data-theme="dark"]{--vip:#c084fc;--bg:#000;--card:#14181f;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}
+--vip:#7e22ce;--bg:#f3f5f7;--card:#fff;--tx:#1d2330;--mut:#7a8394;--ac:#1f9d7a;--me:#d8f3ea;--bd:#e1e5ea}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--vip:#c084fc;--bg:#12161c;--card:#1c222b;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}}
+:root[data-theme="dark"]{--vip:#c084fc;--bg:#12161c;--card:#1c222b;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#17433a;--bd:#2a313c}
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 *{box-sizing:border-box}
 body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Thai",sans-serif;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:10px;gap:8px}
@@ -169,6 +169,12 @@ function render(){
     s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
+    if(admin){
+      var x=document.createElement("button");x.textContent="🗑";x.title="ลบข้อความนี้";
+      x.style.cssText="float:right;min-height:0;padding:0 6px;border:0;background:transparent;font-size:14px;margin-left:6px";
+      x.onclick=function(){if(confirm("ลบข้อความนี้ของ "+(mine?"คุณ":m.n)+"?"))api("/api/del",{r:m.r||"general",u:m.u,ts:m.ts}).then(res)};
+      s.appendChild(x);
+    }
     e.appendChild(s);e.appendChild(body(m));box.appendChild(e);
   });
   box.scrollTop=box.scrollHeight;
@@ -260,16 +266,34 @@ var RADIO=[{n:"📻 วิทยุออนไลน์",u:"https://radio9.plat
 var rdA=new Audio();rdA.preload="none";rdA.volume=.7;
 RADIO.forEach(function(r,i){var o=document.createElement("option");o.value=i;o.textContent=r.n;$("rds").appendChild(o)});
 function rdStat(t){$("rdt").textContent=t}
+function rdPlay(){
+  rdA.src=RADIO[+$("rds").value].u;rdStat("โหลด…");
+  return rdA.play();
+}
 $("rdb").onclick=function(){
   if(!rdA.paused){rdA.pause();rdA.removeAttribute("src");rdA.load();$("rdb").textContent="▶";rdStat("");return}
-  rdA.src=RADIO[+$("rds").value].u;rdStat("โหลด…");
-  rdA.play().catch(function(){$("rdb").textContent="▶";rdStat("เล่นไม่ได้")});
+  rdPlay().catch(function(){$("rdb").textContent="▶";rdStat("เล่นไม่ได้")});
 };
 rdA.onplaying=function(){$("rdb").textContent="⏸";rdStat("🔴 สด")};
 rdA.onwaiting=function(){rdStat("โหลด…")};
 rdA.onerror=function(){$("rdb").textContent="▶";rdStat("ต่อไม่ได้")};
 $("rds").onchange=function(){if(!rdA.paused){rdA.src=RADIO[+this.value].u;rdA.play().catch(function(){})}};
 $("rdv").oninput=function(){rdA.volume=+this.value};
+
+// เล่นวิทยุอัตโนมัติ: ลองเล่นทันทีตอนเปิดหน้า ถ้าเบราว์เซอร์บล็อก จะเริ่มเล่นเมื่อผู้ใช้แตะ/กดหน้าจอครั้งแรก
+var GEV=["pointerdown","touchstart","keydown"];
+function gOff(){GEV.forEach(function(n){document.removeEventListener(n,onG,true)})}
+function onG(e){
+  gOff();
+  if(e.target&&e.target.closest&&e.target.closest("#rd"))return; // แตะที่แถบวิทยุ ให้ปุ่มจัดการเอง
+  if(rdA.paused)rdPlay().catch(function(){rdStat("แตะ ▶ เพื่อเปิด")});
+}
+function gArm(){GEV.forEach(function(n){document.addEventListener(n,onG,true)})}
+(function(){
+  var p;
+  try{p=rdPlay()}catch(e){gArm();return}
+  if(p&&p.catch)p.catch(function(){rdA.removeAttribute("src");$("rdb").textContent="▶";rdStat("แตะเพื่อเปิด");gArm()});
+})();
 
 // ---------- รูปภาพ ----------
 $("ib").onclick=function(){if(d===null){$("ci").placeholder="เลือกอำเภอก่อนนะ";return}$("imf").click()};
@@ -353,6 +377,7 @@ function connect(tryAdmin){
     setAv();push();render();renderDm();
   });
   es.addEventListener("msg",function(e){chat.push(JSON.parse(e.data));if(chat.length>300)chat.shift();render()});
+  es.addEventListener("del",function(e){var x=JSON.parse(e.data);chat=chat.filter(function(m){return !(m.u===x.u&&m.ts===x.ts&&(m.r||"general")===x.r)});render()});
   es.addEventListener("people",function(e){people=JSON.parse(e.data);render()});
   es.addEventListener("dm",function(e){dm.push(JSON.parse(e.data));renderDm();render()});
   es.addEventListener("ban",function(e){banUntil=JSON.parse(e.data).until||0;if(banUntil)chkBan();else note(ph())});
