@@ -362,7 +362,11 @@ function renderCams(){
       box.appendChild(t);
     });
     if(!ids.length){
-      var ph=document.createElement("div");ph.className="camph";ph.textContent="เฉพาะvipเท่านั้นที่สามารถเปิดกล้องมือถือ 🎥 ให้ทุกคนในแชทดูไลฟ์สดๆตรงนี้ได้";box.appendChild(ph);
+      var ph=document.createElement("div");ph.className="camph";
+      var pt=document.createElement("span");pt.appendChild(document.createTextNode("เฉพาะvipเท่านั้นที่สามารถเปิดกล้องมือถือ 🎥 ให้ทุกคนในแชทดูไลฟ์สดๆตรงนี้ได้ vip30วัน100บาท สนใจติดต่อ "));
+      var pa=document.createElement("a");pa.textContent="คลิ๊ก";pa.href="https://www.facebook.com/share/1UYhVNTMB3/";pa.target="_blank";pa.rel="noopener noreferrer";
+      pa.style.cssText="color:#4da3ff;font-weight:700;text-decoration:underline";
+      pt.appendChild(pa);ph.appendChild(pt);box.appendChild(ph);
     }
   }else{
     ids.forEach(function(id){var im=box.querySelector('.ct[data-id="'+id+'"] img');if(im)im.src=camMap[id].f});
