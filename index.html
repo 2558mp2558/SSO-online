@@ -9,16 +9,18 @@
 --vip:#c084fc;--bg:#000;--card:#111;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#0f3a31;--bd:#2a2a2a;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 *{box-sizing:border-box}
-body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Thai",sans-serif;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:10px;gap:8px}
+body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Thai",sans-serif;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:8px;gap:5px}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px}
 .row{display:flex;gap:8px;align-items:center}
 .row+.row{margin-top:8px}
 input,select,button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;min-height:44px;min-width:0}
 input,select{flex:1;width:100%}
-#tabs button{flex:1;font-size:13px;padding:6px}
-.top{padding:6px 8px}
-.top input,.top select,.top button{min-height:36px;padding:6px 8px;font-size:13px}
-.top .row+.row{margin-top:6px}
+#tabs button{flex:1;font-size:12px;padding:3px 4px}
+.top{padding:4px 6px}
+.top input,.top select,.top button{min-height:28px;padding:3px 6px;font-size:12px}
+.top .row{gap:5px}
+.top .row+.row{margin-top:4px}
+#rd button,#rd select{min-height:30px;padding:3px 6px;font-size:12px}
 .chip{cursor:pointer}
 .vp{background:transparent;border:0;padding:4px 8px;min-height:36px;font-size:14px}
 #vb,#ib,#dib,#dvb{flex:none;padding:8px 12px;font-size:18px}
@@ -37,27 +39,32 @@ button:disabled,select:disabled{opacity:.6}
 #msgs{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:120px}
 .m{max-width:88%;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 12px;font-size:15px;word-break:break-word}
 .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
-#mq{flex:none;border:2px solid #e5484d;border-radius:10px;overflow:hidden;white-space:nowrap;background:var(--card);padding:6px 0}
-#mqt{display:inline-block;color:#e5484d;font-weight:700;font-size:14px;animation:mq 85s linear infinite}
+#mq{flex:none;border:2px solid #e5484d;border-radius:10px;overflow:hidden;white-space:nowrap;background:var(--card);padding:3px 0}
+#mqt{display:inline-block;color:#e5484d;font-weight:700;font-size:12px;animation:mq 85s linear infinite}
 @keyframes mq{from{transform:translateX(480px)}to{transform:translateX(-100%)}}
 @media(prefers-reduced-motion:reduce){#mqt{animation:none;white-space:normal}}
 .m small{display:block;color:var(--mut);font-size:11px;margin-bottom:2px}
+#cams{flex:none;display:none;gap:4px;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.ct{flex:none;width:64px;height:64px;min-height:0;padding:0;border-radius:8px;border:1px solid var(--bd);background:var(--card);position:relative;overflow:hidden;scroll-snap-align:start;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer}
+.ct img{width:100%;height:100%;object-fit:cover;display:block}
+.ct span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);color:#fff;font-size:10px;line-height:1.3;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:1px 2px}
 </style>
 </head>
 <body>
 <div id="mq"><div id="mqt">จังหวัด สมุทรสงคราม อ.เมือง อ.อัมพวา อ.บางคนที ยินดีต้อนรับ เข้าสู่ เว็บแชทสดหาเพื่อนคุยในระยะใกล้ๆฟรี24ชั่วโมง มีวิทยุออนไลน์ให้ฟังฟรี24ชั่วโมง (แชทมีระบบส่งรูปภาพและส่งเสียงได้) แชทแบ่งออกเป็น2ห้อง ดังนี้ หาเพื่อนคุย และ เช็คด่านตรวจในจังหวัด ท่านสามารถกระซิบคุยส่วนตัวกันได้ฟรี ผู้ดูแลแชทจะใช้ชื่อสีแดงในการพิมพ์คุยและมีสิทธิ์ลบข้อความหรือลบรูปหรือลบเสียงหากท่านทำการปั่นป่วนห้องแชท ติดต่อผู้พัฒนาแอพได้ที่เฟสบุ๊ค มานพ อาญชนะปาน</div></div>
-<div id="rd" class="card" style="flex:none;display:flex;gap:8px;align-items:center;padding:8px 10px"><button id="rdb" style="flex:none;min-width:44px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:80px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:12px;min-width:52px"></span></div>
+<div id="rd" class="card" style="flex:none;display:flex;gap:6px;align-items:center;padding:4px 6px"><button id="rdb" style="flex:none;min-width:34px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:64px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:11px;min-width:40px"></span></div>
 <div class="card top">
-  <div class="row"><div id="cnt" style="flex:1;font-size:15px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
+  <div class="row"><div id="cnt" style="flex:1;font-size:13px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
   <div class="row" id="tabs"><button class="p" data-r="general">💬 แชตทั่วไป</button><button data-r="checkpoint">🚔 ตรวจสอบด่านตรวจในจังหวัด</button></div>
   <div class="row"><button id="avb" title="เปลี่ยนรูปโปรไฟล์" style="flex:none;padding:6px"></button><input id="nm" maxlength="12" placeholder="ชื่อของคุณ"><input id="avf" type="file" accept="image/*" hidden style="display:none">
     <select id="dist"><option value="">เลือกอำเภอ…</option><option value="0">อ.เมือง</option><option value="1">อ.อัมพวา</option><option value="2">อ.บางคนที</option></select>
   </div>
 </div>
+<div id="cams"></div>
 <div id="main"><div id="msgs"></div><div id="side"><div class="mut" style="margin-bottom:6px">ผู้ออนไลน์</div><div class="people" id="ppl"></div></div></div>
 <div class="row"><input id="ci" maxlength="200" placeholder="พิมพ์ข้อความ…"><button id="ib" title="ส่งรูปภาพ">🖼️</button><input id="imf" type="file" accept="image/*" hidden style="display:none"><button id="vb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="cb" class="p" disabled>ส่ง</button></div>
 <div id="an" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:11;align-items:center;justify-content:center;padding:20px"><div class="card" style="max-width:420px;width:100%;text-align:center;border:3px solid #e5484d;padding:24px 16px"><div id="ant" style="color:#e5484d;font-size:30px;font-weight:800;line-height:1.4;word-break:break-word"></div><div class="mut" style="margin-top:14px">📢 ประกาศจากผู้ดูแลระบบ · แตะเพื่อปิด</div></div></div>
-<div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:95%;max-height:90%"></div>
+<div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:95%;max-height:90%"><video id="lbv" playsinline autoplay style="display:none;max-width:95%;max-height:90%;border-radius:8px"></video><div id="lbs" style="position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:13px;padding:0 12px"></div><button id="lbx" style="position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;min-height:36px;padding:4px 12px;background:rgba(255,255,255,.15);color:#fff;border:0">✕</button></div>
 <div id="dmw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;align-items:center;justify-content:center;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
  <div class="card" style="width:100%;max-width:440px;height:75%;display:flex;flex-direction:column;gap:8px">
   <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
@@ -105,7 +112,7 @@ function avEl(id,name,pv){
   }else{e=document.createElement("span");e.textContent=ini}
   e.className="av";return e;
 }
-function setAv(){var b=$("avb");b.textContent="";var e=avEl(uid,me,myPv);e.style.width="26px";e.style.height="26px";e.style.margin="0";b.appendChild(e)}
+function setAv(){var b=$("avb");b.textContent="";var e=avEl(uid,me,myPv);e.style.width="20px";e.style.height="20px";e.style.fontSize="11px";e.style.margin="0";b.appendChild(e)}
 setAv();
 $("avb").onclick=function(){$("avf").click()};
 $("avf").onchange=function(){
@@ -149,7 +156,7 @@ function render(){
   var all=people.filter(function(p){return p.id!==uid}),nb=all.filter(function(p){return p.bot}).length;
   var un={};dm.forEach(function(m){if(m.a!==uid&&m.ts>(seen[m.a]||loadTs))un[m.a]=1});var nu=Object.keys(un).length;
   $("cnt").textContent=(conn?"🟢":"🔴")+" ออนไลน์ "+(all.length-nb+1)+" คน"+(nb?" · 🤖 "+nb+" บอท":"")+(admin?" · 👑":"")+(nu?" · 🔔 "+nu+" ข้อความส่วนตัว":"");
-  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";
+  renderCams();updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";
   var pe=$("ppl"),box=$("msgs");pe.textContent="";box.textContent="";
   if(d===null){pe.className="mut";pe.textContent="เลือกอำเภอของคุณเพื่อเริ่มแชต";
     var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="เลือกอำเภอด้านบนก่อนนะ";box.appendChild(h);return}
@@ -293,10 +300,160 @@ function gArm(){GEV.forEach(function(n){document.addEventListener(n,onG,true)})}
   if(p&&p.catch)p.catch(function(){rdA.removeAttribute("src");$("rdb").textContent="▶";rdStat("แตะเพื่อเปิด");gArm()});
 })();
 
+// ---------- กล้องสด (เปิดได้เฉพาะแอดมินและ VIP ทุกคนดูได้) ----------
+var camMap={},camSig="",camStream=null,camTimer=null,camFacing="user",camBusy=false,lbCam=null;
+function canCam(){
+  if(admin)return true;
+  var p=people.filter(function(x){return x.id===uid})[0];return !!(p&&p.vip);
+}
+function camStop(notify){
+  clearInterval(camTimer);camTimer=null;rtcCloseAll();
+  if(camStream){camStream.getTracks().forEach(function(t){t.stop()});camStream=null}
+  if(notify!==false)api("/api/cam",{on:false});
+  camSig="";renderCams();
+}
+async function camStart(){
+  if(camStream||camBusy)return;
+  if(chkBan())return;
+  if(d===null){note("เลือกอำเภอก่อนนะ");return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("เบราว์เซอร์นี้เปิดกล้องไม่ได้ (ต้องเปิดผ่าน https)");return}
+  camBusy=true;
+  var vc={facingMode:camFacing,width:{ideal:640},height:{ideal:480},frameRate:{ideal:24,max:30}};
+  try{camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:true})}
+  catch(e){
+    try{camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});note("เปิดได้เฉพาะภาพ (ไม่ได้รับสิทธิ์ไมโครโฟน)")}
+    catch(e2){camStream=null;camBusy=false;note("เปิดกล้องไม่ได้ ตรวจสอบสิทธิ์การเข้าถึงกล้อง");return}
+  }
+  camBusy=false;
+  var v=document.createElement("video");v.muted=true;v.playsInline=true;v.setAttribute("playsinline","");v.srcObject=camStream;
+  try{await v.play()}catch(e){}
+  var c=document.createElement("canvas");c.width=c.height=160;var x=c.getContext("2d"),inflight=0,seq=0; // ภาพตัวอย่างในช่องสี่เหลี่ยม (1 ภาพ/วินาที) ส่วนวิดีโอสดส่งผ่าน WebRTC เมื่อผู้ชมกดเปิดดู
+  camTimer=setInterval(function(){
+    if(inflight>=1||!v.videoWidth)return;
+    var m=Math.min(v.videoWidth,v.videoHeight),sx=(v.videoWidth-m)/2,sy=(v.videoHeight-m)/2;
+    x.drawImage(v,sx,sy,m,m,0,0,160,160);
+    inflight++;
+    api("/api/cam",{n:me,s:++seq,f:c.toDataURL("image/jpeg",0.45)}).then(function(j){
+      inflight--;
+      if(j._s===403){camStop(false);note("ไม่มีสิทธิ์เปิดกล้อง")}
+    });
+  },1000);
+  camSig="";renderCams();
+}
+function camFlip(){camFacing=camFacing==="user"?"environment":"user";if(camStream){camStop();camStart()}}
+function renderCams(){
+  var box=$("cams");if(!box)return;
+  var ids=Object.keys(camMap),can=canCam(),live=!!camStream;
+  box.style.display=(ids.length||can)?"flex":"none";
+  var sig=ids.join(",")+"|"+can+"|"+live;
+  if(sig!==camSig){
+    camSig=sig;box.textContent="";
+    if(can){
+      var b=document.createElement("button");b.className="ct";b.textContent=live?"⏹":"📷";b.title=live?"ปิดกล้อง":"เปิดกล้อง";
+      b.onclick=function(){if(camStream)camStop();else camStart()};box.appendChild(b);
+      if(live){var f=document.createElement("button");f.className="ct";f.textContent="🔄";f.title="สลับกล้องหน้า/หลัง";f.onclick=camFlip;box.appendChild(f)}
+    }
+    ids.forEach(function(id){
+      var c=camMap[id],t=document.createElement("div"),im=document.createElement("img"),l=document.createElement("span");
+      t.className="ct";t.dataset.id=id;im.alt="";im.src=c.f;l.textContent=id===uid?"คุณ":c.n;
+      t.appendChild(im);t.appendChild(l);
+      t.onclick=function(){lbCam=id;$("lbi").src=camMap[id]?camMap[id].f:"";$("lb").style.display="flex";watchStart(id)};
+      box.appendChild(t);
+    });
+  }else{
+    ids.forEach(function(id){var im=box.querySelector('.ct[data-id="'+id+'"] img');if(im)im.src=camMap[id].f});
+  }
+}
+
+// ---------- วิดีโอสดพร้อมเสียง (WebRTC) ----------
+// เจ้าของกล้องส่งตรงถึงผู้ชมแต่ละคนที่กดเปิดดู (จำกัดผู้ชมพร้อมกัน MAXV คนต่อกล้อง เพื่อไม่ให้เน็ตอัปโหลดของผู้ส่งเต็ม)
+var rtcIce=[{urls:"stun:stun.l.google.com:19302"}],peers={},vpc=null,vTarget=null,vQ=[],vTimer=null,MAXV=6;
+function rtcSend(to,type,r,data){return api("/api/rtc",{to:to,type:type,r:r,data:data})}
+function lbStat(t){$("lbs").textContent=t||""}
+// ฝั่งเจ้าของกล้อง
+function bPeerClose(id){var p=peers[id];if(!p)return;try{p.pc.close()}catch(e){}delete peers[id]}
+function rtcCloseAll(){Object.keys(peers).forEach(bPeerClose)}
+async function bWatch(id){
+  if(!camStream||!window.RTCPeerConnection)return;
+  bPeerClose(id);
+  if(Object.keys(peers).length>=MAXV){rtcSend(id,"busy","b");return}
+  var pc=new RTCPeerConnection({iceServers:rtcIce}),p={pc:pc,q:[]};peers[id]=p;
+  camStream.getTracks().forEach(function(t){pc.addTrack(t,camStream)});
+  pc.getSenders().forEach(function(s){
+    if(s.track&&s.track.kind==="video"&&s.getParameters){
+      try{var pr=s.getParameters();if(!pr.encodings||!pr.encodings.length)pr.encodings=[{}];pr.encodings[0].maxBitrate=600000;s.setParameters(pr).catch(function(){})}catch(e){}
+    }
+  });
+  pc.onicecandidate=function(e){if(e.candidate)rtcSend(id,"ice","b",e.candidate)};
+  pc.onconnectionstatechange=function(){
+    if(pc.connectionState==="failed"||pc.connectionState==="closed"||pc.connectionState==="disconnected"){
+      setTimeout(function(){if(peers[id]&&peers[id].pc===pc&&pc.connectionState!=="connected")bPeerClose(id)},5000);
+    }
+  };
+  try{var o=await pc.createOffer();await pc.setLocalDescription(o);rtcSend(id,"offer","b",pc.localDescription)}
+  catch(e){bPeerClose(id)}
+}
+// ฝั่งผู้ชม
+function watchStop(){
+  clearTimeout(vTimer);
+  if(vTarget)rtcSend(vTarget,"bye","v");
+  if(vpc){try{vpc.close()}catch(e){}vpc=null}
+  vTarget=null;vQ=[];
+  var v=$("lbv");v.srcObject=null;v.style.display="none";$("lbi").style.display="";lbStat("");
+}
+function watchStart(id){
+  watchStop();
+  if(id===uid){ // ดูกล้องตัวเอง ใช้ภาพจากกล้องโดยตรง ปิดเสียงกันเสียงหอน
+    if(camStream){var v=$("lbv");v.muted=true;v.srcObject=camStream;v.style.display="";$("lbi").style.display="none";v.play().catch(function(){})}
+    return;
+  }
+  if(!window.RTCPeerConnection){lbStat("เบราว์เซอร์นี้ดูวิดีโอสดไม่ได้");return}
+  vTarget=id;lbStat("กำลังเชื่อมต่อวิดีโอสด…");rtcSend(id,"watch","v");
+  vTimer=setTimeout(function(){
+    if(vTarget===id&&$("lbv").style.display==="none")lbStat("เชื่อมต่อวิดีโอสดไม่ได้ (เครือข่ายอาจบล็อก) แสดงภาพตัวอย่างแทน");
+  },15000);
+}
+async function onOffer(m){
+  if(vTarget!==m.from)return;
+  if(vpc){try{vpc.close()}catch(e){}}
+  var pc=new RTCPeerConnection({iceServers:rtcIce});vpc=pc;
+  pc.onicecandidate=function(e){if(e.candidate)rtcSend(m.from,"ice","v",e.candidate)};
+  pc.ontrack=function(e){
+    var v=$("lbv");v.srcObject=e.streams[0];v.muted=false;v.style.display="";$("lbi").style.display="none";lbStat("🔴 สด");
+    v.play().catch(function(){v.muted=true;v.play().catch(function(){});lbStat("🔴 สด · แตะวิดีโอเพื่อเปิดเสียง")});
+  };
+  pc.onconnectionstatechange=function(){if(vpc===pc&&pc.connectionState==="failed")lbStat("เชื่อมต่อล้มเหลว (เครือข่ายอาจบล็อก)")};
+  try{
+    await pc.setRemoteDescription(m.data);
+    var q=vQ;vQ=[];
+    for(var i=0;i<q.length;i++){try{await pc.addIceCandidate(q[i])}catch(e){}}
+    var a=await pc.createAnswer();await pc.setLocalDescription(a);
+    rtcSend(m.from,"answer","v",pc.localDescription);
+  }catch(e){lbStat("เชื่อมต่อไม่สำเร็จ")}
+}
+function rtcHandle(m){
+  var t=m.type,r=m.r,p;
+  if(t==="watch"){if(camStream)bWatch(m.from)}
+  else if(t==="bye"){if(r==="v")bPeerClose(m.from);else if(vTarget===m.from)watchStop()}
+  else if(t==="answer"){
+    p=peers[m.from];
+    if(p)p.pc.setRemoteDescription(m.data).then(function(){var q=p.q;p.q=[];q.forEach(function(c){p.pc.addIceCandidate(c).catch(function(){})})}).catch(function(){});
+  }
+  else if(t==="offer")onOffer(m);
+  else if(t==="busy"){if(vTarget===m.from)lbStat("ดูวิดีโอสดพร้อมกันได้จำกัด ตอนนี้เต็ม แสดงภาพตัวอย่างแทน")}
+  else if(t==="ice"){
+    if(r==="v"){p=peers[m.from];if(p){if(p.pc.remoteDescription)p.pc.addIceCandidate(m.data).catch(function(){});else p.q.push(m.data)}}
+    else if(vTarget===m.from){if(vpc&&vpc.remoteDescription)vpc.addIceCandidate(m.data).catch(function(){});else vQ.push(m.data)}
+  }
+}
+
 // ---------- รูปภาพ ----------
 $("ib").onclick=function(){if(d===null){$("ci").placeholder="เลือกอำเภอก่อนนะ";return}$("imf").click()};
 $("dib").onclick=function(){$("imf").click()};
-$("lb").onclick=function(){$("lb").style.display="none"};
+$("lb").onclick=function(ev){
+  if(ev&&ev.target===$("lbv")&&$("lbv").muted&&vTarget){$("lbv").muted=false;lbStat("🔴 สด");return} // แตะวิดีโอเพื่อเปิดเสียง
+  lbCam=null;watchStop();$("lb").style.display="none";
+};
 $("imf").onchange=function(){
   var f=this.files&&this.files[0];this.value="";
   if(!f||f.type.indexOf("image/")!==0)return;
@@ -372,9 +529,14 @@ function connect(tryAdmin){
     chat=[].concat(x.msgs.general||[],x.msgs.checkpoint||[]);
     people=x.people||[];dm=x.dms||[];ann=x.announce||null;showAnn();bans=x.bans||{};
     if(myPic&&!myPv)uploadPic();
+    camMap={};(x.cams||[]).forEach(function(c){camMap[c.id]=c});camSig="";
+    if(x.ice&&x.ice.length)rtcIce=x.ice;
     setAv();push();render();renderDm();
   });
   es.addEventListener("msg",function(e){chat.push(JSON.parse(e.data));if(chat.length>300)chat.shift();render()});
+  es.addEventListener("cam",function(e){var c=JSON.parse(e.data);camMap[c.id]=c;renderCams();if(lbCam===c.id&&$("lb").style.display==="flex")$("lbi").src=c.f});
+  es.addEventListener("camoff",function(e){var c=JSON.parse(e.data);delete camMap[c.id];if(lbCam===c.id){lbCam=null;watchStop();$("lb").style.display="none"}renderCams()});
+  es.addEventListener("rtc",function(e){try{rtcHandle(JSON.parse(e.data))}catch(x){}});
   es.addEventListener("del",function(e){var x=JSON.parse(e.data);chat=chat.filter(function(m){return !(m.u===x.u&&m.ts===x.ts&&(m.r||"general")===x.r)});render()});
   es.addEventListener("people",function(e){people=JSON.parse(e.data);render()});
   es.addEventListener("dm",function(e){dm.push(JSON.parse(e.data));renderDm();render()});

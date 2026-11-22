@@ -20,6 +20,22 @@ function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.write
 const users = new Map(); // id -> {conns:Set, n, d, adm}
 const lastSend = new Map();
 
+// ---------- กล้องสด (เฉพาะแอดมินและ VIP) ส่งภาพ JPEG เป็นเฟรมๆ เก็บในหน่วยความจำเท่านั้น ไม่บันทึกลงไฟล์ ----------
+const cams = new Map(); // id -> {n, f, ts}
+function camList() { const a = []; cams.forEach(function (c, id) { a.push({ id: id, n: c.n, f: c.f }); }); return a; }
+// ส่งเฟรมกล้องให้ทุกคน ถ้าเครื่องไหนรับไม่ทัน (บัฟเฟอร์ค้าง) จะข้ามเฟรมนั้นแทนการสะสมจนช้า
+function toAllLossy(ev, data) {
+  const msg = 'event: ' + ev + '\ndata: ' + JSON.stringify(data) + '\n\n';
+  users.forEach(function (u) { u.conns.forEach(function (r) { if (r.writableLength < 300000) r.write(msg); }); });
+}
+// ---------- วิดีโอสด WebRTC: เซิร์ฟเวอร์ทำหน้าที่ส่งต่อข้อความเชื่อมต่อ (signaling) เท่านั้น ภาพ/เสียงไม่ผ่านเซิร์ฟเวอร์ ----------
+// ถ้าผู้ใช้อยู่หลังเครือข่ายมือถือที่บล็อกการเชื่อมต่อตรง ต้องมี TURN: TURN_URL=turn:host:3478 TURN_USER=.. TURN_PASS=.. (ใส่หลายอันคั่นด้วย , ได้)
+const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+if (process.env.TURN_URL) ICE.push({ urls: process.env.TURN_URL.split(','), username: process.env.TURN_USER || '', credential: process.env.TURN_PASS || '' });
+const RTC_TYPES = ['watch', 'offer', 'answer', 'ice', 'bye', 'busy'];
+const rtcRate = new Map(); // id -> {t, n}
+function camDrop(id) { if (cams.delete(id)) toAll('camoff', { id: id }); }
+
 // ---------- บอท 33 ตัว แสดงในรายชื่อผู้ออนไลน์ (ระบุว่าเป็นบอท ไม่พิมพ์ในแชท ตอบเฉพาะข้อความกระซิบ) ----------
 const BOT_NAMES = ["น้องฟ้า","พี่โจ้","ลุงชาติ","ป้าแต๋ว","น้ำฝน","บอยแม่กลอง","แพรวา","ต้นกล้า","ครูหนุ่ม","เจ๊อ้อย","หมูหยอง","ไก่ทอด","มะลิ","พิมพ์","โอ๊ต","เบสท์","กานต์","นุ่น","ปลาทู","ส้มโอ","ลิ้นจี่","ตาโต","อาร์ม","แจม","กุ้ง","ปอนด์","ฝ้าย","เมษา","ตุ๊กตา","บอสน้อย","ลุงสมชัย","พี่หนึ่ง","น้องเมย์"];
 const BOTS = BOT_NAMES.map(function (n, i) { return { id: 'bot' + i, n: n, d: i % 3, pv: 0, adm: false, bot: true }; });
@@ -116,6 +132,34 @@ function handleApi(req, res, route) {
       return json(res, 200, { ok: true });
     }
 
+    if (route === 'cam') {
+      if (!(adm || vipOf(id))) return json(res, 403, { error: 'forbidden' });
+      if (b.on === false) { camDrop(id); return json(res, 200, { ok: true }); }
+      if (banOf(id)) return json(res, 403, { error: 'banned' });
+      if (typeof b.f !== 'string' || b.f.indexOf('data:image/jpeg;base64,') !== 0 || b.f.length > 60000) return json(res, 400, { error: 'bad' });
+      const now = Date.now(), prev = cams.get(id);
+      const sq = +b.s || 0;
+      if (prev && sq && sq <= prev.s) return json(res, 200, { ok: true }); // เฟรมเก่ามาช้ากว่าเฟรมใหม่ ข้ามไป
+      if (prev && now - prev.ts < 40) return json(res, 429, { error: 'rate' });
+      cams.set(id, { n: name, f: b.f, ts: now, s: sq });
+      toAllLossy('cam', { id: id, n: name, f: b.f });
+      return json(res, 200, { ok: true });
+    }
+
+    if (route === 'rtc') {
+      if (banOf(id)) return json(res, 403, { error: 'banned' });
+      const to = String(b.to || ''), type = String(b.type || '');
+      if (!to || to === id || RTC_TYPES.indexOf(type) < 0) return json(res, 400, { error: 'bad' });
+      if (JSON.stringify(b.data || '').length > 20000) return json(res, 400, { error: 'bad' });
+      // ส่งต่อได้เฉพาะระหว่างผู้ชมกับเจ้าของกล้องที่กำลังเปิดอยู่
+      if (type === 'watch' ? !cams.has(to) : !(cams.has(id) || cams.has(to))) return json(res, 403, { error: 'forbidden' });
+      const now = Date.now(); let rr = rtcRate.get(id);
+      if (!rr || now - rr.t > 10000) { rr = { t: now, n: 0 }; rtcRate.set(id, rr); }
+      if (++rr.n > 200) return json(res, 429, { error: 'rate' });
+      toUsers([to], 'rtc', { from: id, type: type, r: b.r === 'b' ? 'b' : 'v', data: b.data });
+      return json(res, 200, { ok: true });
+    }
+
     if (route === 'del') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const r = b.r === 'checkpoint' ? 'checkpoint' : 'general', ts = +b.ts, uu = String(b.u || '');
@@ -190,13 +234,15 @@ function handleEvents(req, res, q) {
     people: people(),
     dms: db.dms.filter(function (m) { return m.a === id || m.b === id; }),
     bans: adm ? db.bans : {},
-    announce: db.announce
+    announce: db.announce,
+    cams: camList(),
+    ice: ICE
   });
   pushPeople();
   const ka = setInterval(function () { res.write(': ping\n\n'); }, 25000);
   req.on('close', function () {
     clearInterval(ka); u.conns.delete(res);
-    if (!u.conns.size) users.delete(id);
+    if (!u.conns.size) { users.delete(id); camDrop(id); }
     pushPeople();
   });
 }
@@ -219,6 +265,15 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'POST' && p.indexOf('/api/') === 0) return handleApi(req, res, p.slice(5));
   res.writeHead(404); res.end();
 });
+
+// ปิดกล้องที่ไม่ส่งภาพเกิน 8 วินาที หรือเจ้าของหมดสิทธิ์ VIP
+setInterval(function () {
+  const now = Date.now();
+  cams.forEach(function (c, id) {
+    const u = users.get(id);
+    if (now - c.ts > 8000 || !(vipOf(id) || (u && u.adm))) camDrop(id);
+  });
+}, 4000);
 
 // ลบรูป/เสียงที่หมดอายุ
 setInterval(function () {
