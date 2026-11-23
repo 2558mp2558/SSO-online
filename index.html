@@ -76,6 +76,7 @@ button:disabled,select:disabled{opacity:.6}
 <div id="gallery" aria-label="ภาพประชาสัมพันธ์"><div id="galleryTrack"></div></div>
 <div id="galleryAdmin"><button id="galleryAdd" class="p">＋ เพิ่มรูปภาพ</button><span class="mut">จัดการรูปภาพ (เฉพาะแอดมิน)</span><input id="galleryFile" type="file" accept="image/*" hidden></div>
 <div id="rd" class="card" style="flex:none;display:flex;gap:6px;align-items:center;padding:4px 6px"><button id="rdb" style="flex:none;min-width:34px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:64px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:11px;min-width:40px"></span></div>
+<div id="djLive" role="status" style="display:none;flex:none;align-items:center;justify-content:center;gap:6px;padding:6px 10px;border-radius:10px;background:#e5484d;color:#fff;font-weight:800;font-size:14px;text-align:center">🔴 ขณะนี้ DJ กำลังพูดสด</div>
 <div class="card top">
   <div class="row"><div id="cnt" style="flex:1;font-size:13px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
   <div class="row" id="tabs"><button class="p" data-r="general">💬 แชตทั่วไป</button><button data-r="checkpoint">🚔 ตรวจสอบด่านตรวจในจังหวัด</button></div>
@@ -173,6 +174,7 @@ var au=new Audio(),curKey="";
 // ---------- ไมค์ถ่ายทอดสดแอดมิน (WebRTC) ----------
 var liveStream=null,livePeers={},livePendingIce={},liveSession="",liveAudio=document.createElement("audio");
 liveAudio.id="liveAudio";liveAudio.autoplay=true;liveAudio.controls=true;liveAudio.playsInline=true;liveAudio.style.cssText="display:none;width:100%;max-height:42px";document.body.appendChild(liveAudio);
+function djBar(on){var b=$("djLive");if(b)b.style.display=on?"flex":"none"}
 function voiceApi(route,obj){obj=obj||{};obj.n=me;return api("/api/"+route,obj)}
 function voiceCloseAll(){Object.keys(livePeers).forEach(function(id){try{livePeers[id].close()}catch(e){}});livePeers={};livePendingIce={};liveAudio.srcObject=null;liveAudio.style.display="none"}
 function voiceAddIce(id,candidate){var pc=livePeers[id];if(!pc)return;if(pc.remoteDescription)pc.addIceCandidate(candidate).catch(function(){});else{if(!livePendingIce[id])livePendingIce[id]=[];livePendingIce[id].push(candidate)}}
@@ -193,9 +195,10 @@ async function voiceStart(){
   catch(e){note("เปิดไมโครโฟนไม่ได้ กรุณาอนุญาตการใช้ไมค์");return}
   var r=await voiceApi("voice-start",{});if(r._s!==200){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null;note("เริ่มถ่ายทอดสดไม่สำเร็จ");return}
   liveSession=r.session||"";
+  djBar(true);
   $("liveMic").textContent="⏹ หยุดพูดสด";$("liveMic").classList.add("on");$("liveMicHint").textContent="กำลังพูดสด · แชตยังใช้งานได้";note("กำลังถ่ายทอดสดไปทั้ง 2 ห้อง");
 }
-async function voiceStop(){if(!admin)return;await voiceApi("voice-stop",{session:liveSession});voiceCloseAll();if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}liveSession="";$("liveMic").textContent="🎙️ เริ่มพูดสดทั้ง 2 ห้อง";$("liveMic").classList.remove("on");$("liveMicHint").textContent="เฉพาะแอดมิน · เสียงอย่างเดียว";note(ph())}
+async function voiceStop(){if(!admin)return;await voiceApi("voice-stop",{session:liveSession});voiceCloseAll();if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}liveSession="";djBar(false);$("liveMic").textContent="🎙️ เริ่มพูดสดทั้ง 2 ห้อง";$("liveMic").classList.remove("on");$("liveMicHint").textContent="เฉพาะแอดมิน · เสียงอย่างเดียว";note(ph())}
 $("liveMic").onclick=function(){if(!admin)return;if(liveStream)voiceStop();else voiceStart()};
 
 au.onplay=au.onpause=au.onended=function(){render();renderDm()};
@@ -468,8 +471,8 @@ function connect(tryAdmin){
   es.addEventListener("announce",function(e){ann=JSON.parse(e.data);showAnn()});
   es.addEventListener("gallery",function(){galleryLoad()});
   es.addEventListener("bans",function(e){bans=JSON.parse(e.data);updBan()});
-  es.addEventListener("voice-start",function(e){var v=JSON.parse(e.data);if(admin){if(liveStream)liveSession=v.session}else{liveSession=v.session;voiceApi("voice-signal",{target:v.adminId,session:v.session,signal:{type:"ready"}})}});
-  es.addEventListener("voice-stop",function(){voiceCloseAll();liveSession=""});
+  es.addEventListener("voice-start",function(e){var v=JSON.parse(e.data);if(admin){if(liveStream)liveSession=v.session}else{liveSession=v.session;djBar(true);voiceApi("voice-signal",{target:v.adminId,session:v.session,signal:{type:"ready"}})}});
+  es.addEventListener("voice-stop",function(){voiceCloseAll();liveSession="";djBar(false)});
   es.addEventListener("voice-signal",async function(e){
     var v=JSON.parse(e.data);if(!v||v.session!==liveSession||!v.signal)return;
     try{
