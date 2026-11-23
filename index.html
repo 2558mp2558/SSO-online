@@ -35,6 +35,8 @@ input,select{flex:1;width:100%}
 @media(max-width:380px){#liveMicBar{gap:5px;padding:5px}#liveMicBar #liveMic{min-width:0;font-size:13px;padding:7px 9px}#liveMicHint{font-size:10px}}
 #liveMicHint{font-size:11px;color:var(--mut)}
 #liveAudio{display:none}
+#djLive{display:none;flex:none;text-align:center;padding:6px 10px;border-radius:10px;background:#3a1215;border:1px solid #a3262d;color:#ffb4b8;font-size:13px;font-weight:700;animation:djp 1.4s ease-in-out infinite}
+@keyframes djp{50%{opacity:.6}}
 .pic{max-width:100%;max-height:220px;border-radius:10px;display:block;cursor:pointer}
 #vb.rec,#dvb.rec{background:#e5484d;color:#fff;border-color:#e5484d;font-size:14px}
 .av{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--ac);color:#fff;font-weight:600;font-size:14px;margin-bottom:2px}
@@ -75,6 +77,7 @@ button:disabled,select:disabled{opacity:.6}
 <div id="gallery" aria-label="ภาพประชาสัมพันธ์"><div id="galleryTrack"></div></div>
 <div id="galleryAdmin"><button id="galleryAdd" class="p">＋ เพิ่มรูปภาพ</button><span class="mut">จัดการรูปภาพ (เฉพาะแอดมิน)</span><input id="galleryFile" type="file" accept="image/*" hidden></div>
 <div id="rd" class="card" style="flex:none;display:flex;gap:6px;align-items:center;padding:4px 6px"><button id="rdb" style="flex:none;min-width:34px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:64px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:11px;min-width:40px"></span></div>
+<div id="djLive" role="status">🔴 ขณะนี้ DJ กำลังพูดสด กับแชท จ.สมุทรสงคราม</div>
 <div class="card top">
   <div class="row"><div id="cnt" style="flex:1;font-size:13px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
   <div class="row" id="tabs"><button class="p" data-r="general">💬 แชตทั่วไป</button><button data-r="checkpoint">🚔 ตรวจสอบด่านตรวจในจังหวัด</button></div>
@@ -186,7 +189,7 @@ function rdApply(){
     rdA.volume=Math.max(0,Math.min(1,rdA.volume+d*0.35));
   },40);
 }
-function voiceDuck(on){rdDuck=!!on;rdApply()}
+function voiceDuck(on){rdDuck=!!on;rdApply();var b=document.getElementById("djLive");if(b)b.style.display=rdDuck?"block":"none"}
 function liveSync(){liveAudio.muted=!!(liveCtx&&liveCtx.state==="running"&&liveSrc)}
 function voiceBoost(stream){
   try{
