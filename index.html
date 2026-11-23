@@ -23,9 +23,19 @@ input,select{flex:1;width:100%}
 #rd button,#rd select{min-height:30px;padding:3px 6px;font-size:12px}
 .chip{cursor:pointer}
 .vp{background:transparent;border:0;padding:4px 8px;min-height:36px;font-size:14px}
-#vb,#ib,#dib,#dvb{flex:none;padding:8px 12px;font-size:18px}
+#vb,#ib,#dib,#dvb,#liveMic{flex:none;padding:8px 12px;font-size:18px}
+#liveMic{display:none;flex:1;width:100%;min-height:46px;background:#a3262d;color:#fff;border:0;font-weight:800;font-size:16px;letter-spacing:.2px}
+#liveMic.on{background:#e5484d}
+#liveMicBar{display:none;flex:none;align-items:center;gap:8px;margin:0;padding:6px 8px;background:#111;border:1px solid #3a2426;border-radius:12px;position:relative;z-index:2}
+#liveMicHint{flex:1;line-height:1.35}
+#composer{flex:none;position:relative;z-index:2}
+#main{flex:1;display:flex;gap:8px;min-height:0}
+#msgs{overscroll-behavior:contain;scrollbar-width:thin}
+#liveMicBar #liveMic{flex:0 0 auto;width:auto;min-width:190px}
+@media(max-width:380px){#liveMicBar{gap:5px;padding:5px}#liveMicBar #liveMic{min-width:0;font-size:13px;padding:7px 9px}#liveMicHint{font-size:10px}}
+#liveMicHint{font-size:11px;color:var(--mut)}
+#liveAudio{display:none}
 .pic{max-width:100%;max-height:220px;border-radius:10px;display:block;cursor:pointer}
-#lvb.rec{background:#e5484d;color:#fff;border-color:#e5484d}
 #vb.rec,#dvb.rec{background:#e5484d;color:#fff;border-color:#e5484d;font-size:14px}
 .av{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--ac);color:#fff;font-weight:600;font-size:14px;margin-bottom:2px}
 small .av{width:16px;height:16px;font-size:10px;margin:0 4px 0 0;vertical-align:middle}
@@ -39,6 +49,7 @@ button:disabled,select:disabled{opacity:.6}
 #side{width:118px;flex:none;overflow-y:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px}
 #msgs{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:120px}
 .m{max-width:88%;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 12px;font-size:15px;word-break:break-word}
+.m.adm{color:#e5484d}
 .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
 #mq{flex:none;border:2px solid #e5484d;border-radius:10px;overflow:hidden;white-space:nowrap;background:var(--card);padding:3px 0}
 #mqt{display:inline-block;color:#e5484d;font-weight:700;font-size:12px;animation:mq 85s linear infinite}
@@ -65,21 +76,21 @@ button:disabled,select:disabled{opacity:.6}
 <div id="gallery" aria-label="ภาพประชาสัมพันธ์"><div id="galleryTrack"></div></div>
 <div id="galleryAdmin"><button id="galleryAdd" class="p">＋ เพิ่มรูปภาพ</button><span class="mut">จัดการรูปภาพ (เฉพาะแอดมิน)</span><input id="galleryFile" type="file" accept="image/*" hidden></div>
 <div id="rd" class="card" style="flex:none;display:flex;gap:6px;align-items:center;padding:4px 6px"><button id="rdb" style="flex:none;min-width:34px" title="เล่น/หยุดวิทยุ">▶</button><select id="rds" style="flex:1" aria-label="เลือกสถานี"></select><input id="rdv" type="range" min="0" max="1" step="0.05" value="0.7" style="width:64px;flex:none;padding:0;min-height:0;border:0;background:none" aria-label="ระดับเสียง"><span id="rdt" class="mut" style="flex:none;font-size:11px;min-width:40px"></span></div>
-<div id="lvbar" class="card" style="flex:none;display:none;padding:4px 8px;font-size:12px;color:#e5484d;font-weight:700;align-items:center;gap:8px"></div>
 <div class="card top">
-  <div class="row"><div id="cnt" style="flex:1;font-size:13px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><button id="lvb" title="พูดสดให้ทุกคนได้ยิน (ทั้ง 2 ห้อง)" style="flex:none;display:none">📡 พูดสด</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
+  <div class="row"><div id="cnt" style="flex:1;font-size:13px;font-weight:700;color:var(--ac)">🟢 ออนไลน์ 0 คน</div><button id="adm" title="แอดมิน" style="flex:none">🔑</button><button id="anb" title="ประกาศถึงทุกคน" style="flex:none;display:none">📢</button><select id="rad" style="flex:none;width:auto" title="แสดงข้อความ"><option value="0">อำเภอเดียวกัน</option><option value="7">ใน 7 กม.</option><option value="99" selected>ทั้งจังหวัด</option></select></div>
   <div class="row" id="tabs"><button class="p" data-r="general">💬 แชตทั่วไป</button><button data-r="checkpoint">🚔 ตรวจสอบด่านตรวจในจังหวัด</button></div>
   <div class="row"><button id="avb" title="เปลี่ยนรูปโปรไฟล์" style="flex:none;padding:6px"></button><input id="nm" maxlength="12" placeholder="ชื่อของคุณ"><input id="avf" type="file" accept="image/*" hidden style="display:none">
     <select id="dist"><option value="">เลือกอำเภอ…</option><option value="0">อ.เมือง</option><option value="1">อ.อัมพวา</option><option value="2">อ.บางคนที</option></select>
   </div>
 </div>
-<div id="main"><div id="msgs"></div><div id="side"><div class="mut" style="margin-bottom:6px">ผู้ออนไลน์</div><div class="people" id="ppl"></div></div></div>
-<div class="row"><input id="ci" maxlength="200" placeholder="พิมพ์ข้อความ…"><button id="ib" title="ส่งรูปภาพ">🖼️</button><input id="imf" type="file" accept="image/*" hidden style="display:none"><button id="vb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="cb" class="p" disabled>ส่ง</button></div>
+<div id="main"><div id="msgs" aria-live="polite"></div><div id="side"><div class="mut" style="margin-bottom:6px">ผู้ออนไลน์</div><div class="people" id="ppl"></div></div></div>
+<div class="row" id="liveMicBar"><button id="liveMic" type="button">🎙️ เริ่มพูดสดทั้ง 2 ห้อง</button><span id="liveMicHint">เฉพาะแอดมิน · เสียงอย่างเดียว</span></div>
+<div class="row" id="composer"><input id="ci" maxlength="200" placeholder="พิมพ์ข้อความ…"><button id="ib" title="ส่งรูปภาพ">🖼️</button><input id="imf" type="file" accept="image/*" hidden style="display:none"><button id="vb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="cb" class="p" disabled>ส่ง</button></div>
 <div id="an" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:11;align-items:center;justify-content:center;padding:20px"><div class="card" style="max-width:420px;width:100%;text-align:center;border:3px solid #e5484d;padding:24px 16px"><div id="ant" style="color:#e5484d;font-size:30px;font-weight:800;line-height:1.4;word-break:break-word"></div><div class="mut" style="margin-top:14px">📢 ประกาศจากผู้ดูแลระบบ · แตะเพื่อปิด</div></div></div>
 <div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:95%;max-height:90%"><div id="lbs" style="position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:13px;padding:0 12px"></div><button id="lbx" style="position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;min-height:36px;padding:4px 12px;background:rgba(255,255,255,.15);color:#fff;border:0">✕</button></div>
 <div id="dmw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;align-items:center;justify-content:center;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
  <div class="card" style="width:100%;max-width:440px;height:75%;display:flex;flex-direction:column;gap:8px">
-  <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="ddj" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
+  <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
   <div id="dmm" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
   <div class="mut">ส่งถึงผู้รับเท่านั้น แต่ไม่ได้เข้ารหัส ผู้ดูแลเซิร์ฟเวอร์อาจเปิดไฟล์ข้อมูลอ่านได้ อย่าส่งข้อมูลสำคัญ</div>
   <div class="row"><input id="dmi" maxlength="200"><button id="dib" title="ส่งรูปภาพ">🖼️</button><button id="dvb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="dmb" class="p">ส่ง</button></div>
@@ -159,16 +170,44 @@ function body(m){
   return document.createTextNode(m.t||"");
 }
 var au=new Audio(),curKey="";
+// ---------- ไมค์ถ่ายทอดสดแอดมิน (WebRTC) ----------
+var liveStream=null,livePeers={},livePendingIce={},liveSession="",liveAudio=document.createElement("audio");
+liveAudio.id="liveAudio";liveAudio.autoplay=true;liveAudio.controls=true;liveAudio.playsInline=true;liveAudio.style.cssText="display:none;width:100%;max-height:42px";document.body.appendChild(liveAudio);
+function voiceApi(route,obj){obj=obj||{};obj.n=me;return api("/api/"+route,obj)}
+function voiceCloseAll(){Object.keys(livePeers).forEach(function(id){try{livePeers[id].close()}catch(e){}});livePeers={};livePendingIce={};liveAudio.srcObject=null;liveAudio.style.display="none"}
+function voiceAddIce(id,candidate){var pc=livePeers[id];if(!pc)return;if(pc.remoteDescription)pc.addIceCandidate(candidate).catch(function(){});else{if(!livePendingIce[id])livePendingIce[id]=[];livePendingIce[id].push(candidate)}}
+function voiceFlushIce(id){var pc=livePeers[id],q=livePendingIce[id]||[];if(!pc||!pc.remoteDescription)return;livePendingIce[id]=[];q.forEach(function(c){pc.addIceCandidate(c).catch(function(){})})}
+function voicePeer(id){
+  if(livePeers[id])return livePeers[id];
+  var pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});livePeers[id]=pc;
+  if(liveStream)liveStream.getTracks().forEach(function(t){pc.addTrack(t,liveStream)});
+  pc.ontrack=function(e){if(!admin&&e.streams&&e.streams[0]){liveAudio.srcObject=e.streams[0];liveAudio.style.display="block";liveAudio.play().catch(function(){note("มีเสียงถ่ายทอดสด แตะปุ่มเล่นเสียงเพื่อฟัง")})}};
+  pc.onicecandidate=function(e){if(e.candidate)voiceApi("voice-signal",{target:id,session:liveSession,signal:{type:"ice",candidate:e.candidate}})};
+  pc.onconnectionstatechange=function(){if(pc.connectionState==="failed"||pc.connectionState==="closed"){try{pc.close()}catch(e){}delete livePeers[id]}};
+  return pc;
+}
+async function voiceStart(){
+  if(!admin)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("เบราว์เซอร์นี้ใช้ไมค์สดไม่ได้");return}
+  try{liveStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false})}
+  catch(e){note("เปิดไมโครโฟนไม่ได้ กรุณาอนุญาตการใช้ไมค์");return}
+  var r=await voiceApi("voice-start",{});if(r._s!==200){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null;note("เริ่มถ่ายทอดสดไม่สำเร็จ");return}
+  liveSession=r.session||"";
+  $("liveMic").textContent="⏹ หยุดพูดสด";$("liveMic").classList.add("on");$("liveMicHint").textContent="กำลังพูดสด · แชตยังใช้งานได้";note("กำลังถ่ายทอดสดไปทั้ง 2 ห้อง");
+}
+async function voiceStop(){if(!admin)return;await voiceApi("voice-stop",{session:liveSession});voiceCloseAll();if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}liveSession="";$("liveMic").textContent="🎙️ เริ่มพูดสดทั้ง 2 ห้อง";$("liveMic").classList.remove("on");$("liveMicHint").textContent="เฉพาะแอดมิน · เสียงอย่างเดียว";note(ph())}
+$("liveMic").onclick=function(){if(!admin)return;if(liveStream)voiceStop();else voiceStart()};
+
 au.onplay=au.onpause=au.onended=function(){render();renderDm()};
 function playV(m){var key=(m.u||m.a)+"|"+m.ts;if(curKey===key&&!au.paused){au.pause();return}curKey=key;au.src=m.au;au.play().catch(function(){})}
-function sfx(o){return o.adm?" (ผู้ดูแลแชท)":o.dj?" (ดีเจDJ)":o.vip?" (vip)":""}
-function tone(o){return o.adm?"#e5484d":o.dj?"#38bdf8":o.vip?"var(--vip)":""}
-function nameSpan(name,isAdm,isVip,isDj){var o={adm:isAdm,vip:isVip,dj:isDj},s=document.createElement("span");s.textContent=name+sfx(o);if(tone(o))s.style.cssText="color:"+tone(o)+";font-weight:700";return s}
+function sfx(o){return o.adm?" (ผู้ดูแลแชท)":o.vip?" (vip)":""}
+function tone(o){return o.adm?"#e5484d":o.vip?"var(--vip)":""}
+function nameSpan(name,isAdm,isVip){var o={adm:isAdm,vip:isVip},s=document.createElement("span");s.textContent=name+sfx(o);if(tone(o))s.style.cssText="color:"+tone(o)+";font-weight:700";return s}
 function render(){
   var all=people.filter(function(p){return p.id!==uid}),nb=all.filter(function(p){return p.bot}).length;
   var un={};dm.forEach(function(m){if(m.a!==uid&&m.ts>(seen[m.a]||loadTs))un[m.a]=1});var nu=Object.keys(un).length;
   $("cnt").textContent=(conn?"🟢":"🔴")+" ออนไลน์ "+(all.length-nb+1)+" คน"+(nb?" · 🤖 "+nb+" บอท":"")+(admin?" · 👑":"")+(nu?" · 🔔 "+nu+" ข้อความส่วนตัว":"");
-  updVip();updDj();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("lvb").style.display=(admin||myDj)?"":"none";
+  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("liveMicBar").style.display=admin?"flex":"none";
   var pe=$("ppl"),box=$("msgs");pe.textContent="";box.textContent="";
   if(d===null){pe.className="mut";pe.textContent="เลือกอำเภอของคุณเพื่อเริ่มแชต";
     var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="เลือกอำเภอด้านบนก่อนนะ";box.appendChild(h);return}
@@ -182,8 +221,8 @@ function render(){
   chat.filter(function(m){return (m.r||"general")===room}).sort(function(a,b){return a.ts-b.ts}).forEach(function(m){
     if(!AREAS[m.d])return;var mine=m.u===uid;if(!mine&&!ok(m.d))return;
     var e=document.createElement("div"),s=document.createElement("small");
-    e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip,m.dj));
+    e.className="m"+(mine?" me":"")+(m.adm?" adm":"");
+    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
     if(admin){
@@ -233,7 +272,7 @@ Array.prototype.forEach.call(tb,function(b){b.onclick=function(){room=b.dataset.
 function openDm(p){
   dmPeer=p;
   $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" 🤖":"")+sfx(p);$("dmt").style.color=tone(p);
-  updVip();updDj();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
+  updVip();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
   $("dmi").placeholder="พิมพ์ข้อความส่วนตัว…";
   $("dmw").style.display="flex";renderDm();render();
 }
@@ -244,8 +283,8 @@ function renderDm(){
   if(!list.length){var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="ยังไม่มีข้อความ ลองทักทายดูสิ";box.appendChild(h)}
   list.forEach(function(m){
     var mine=m.a===uid,e=document.createElement("div"),s=document.createElement("small");
-    e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip,m.dj));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
+    e.className="m"+(mine?" me":"")+(m.adm?" adm":"");
+    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
     s.insertBefore(avEl(m.a,mine?me:m.an,m.pv),s.firstChild);
     e.appendChild(s);e.appendChild(body(m));box.appendChild(e);
   });
@@ -276,26 +315,6 @@ $("dvip").onclick=function(){
   if(!on&&!confirm("แต่งตั้ง "+dmPeer.n+" เป็น VIP นาน 30 วัน?"))return;
   api("/api/vip",{target:dmPeer.id,on:!on});
 };
-
-// ---------- แต่งตั้ง DJ (แอดมิน) ----------
-function updDj(){
-  var b=$("ddj");
-  if(!dmPeer||!admin||dmPeer.bot||dmPeer.adm||dmPeer.id===uid){b.style.display="none";return}
-  var p=peerP();b.style.display="";b.textContent=(p&&p.dj)?"🎧 ยกเลิก DJ":"🎧 แต่งตั้ง DJ 30 วัน";
-}
-$("ddj").onclick=function(){
-  if(!admin||!dmPeer)return;var p=peerP(),on=!!(p&&p.dj);
-  if(!on&&!confirm("แต่งตั้ง "+dmPeer.n+" เป็น DJ นาน 30 วัน? (ชื่อสีฟ้า และพูดสดได้)"))return;
-  api("/api/dj",{target:dmPeer.id,on:!on});
-};
-// สถานะ DJ ของตัวเอง (อ่านจากรายชื่อผู้ออนไลน์)
-var myDj=false;
-function syncDj(){
-  var s=people.filter(function(p){return p.id===uid})[0];
-  if(!s)return;
-  var v=!!s.dj;
-  if(v!==myDj){myDj=v;if(!v&&!admin&&lvOn)lvStop(false)}
-}
 
 // ---------- วิทยุออนไลน์ ----------
 // เพิ่มสถานีได้ที่นี่ (ลิงก์ต้องขึ้นต้นด้วย https://)
@@ -405,106 +424,9 @@ $("galleryFile").onchange=function(){
 };
 galleryLoad();
 
-// ---------- พูดสด (แอดมิน → ทุกคนทั้ง 2 ห้อง) ----------
-// ส่งเสียงเป็น PCM 16kHz เป็นช่วงสั้น ๆ ผ่านเซิร์ฟเวอร์ ผู้ฟังเล่นต่อเนื่องด้วย Web Audio
-var LVR=16000,lvOn=false,lvCtx=null,lvStream=null,lvProc=null,lvSrc=null,lvQ=[],lvBusy=false,lvOut=[],lvAcc=0,lvCnt=0,lvPh=0;
-var lvPlay=null,lvNext=0,lvLive=null,lvMute=false;
-function AC(){return window.AudioContext||window.webkitAudioContext}
-function lvPC(){
-  if(!lvPlay&&AC())lvPlay=new (AC())();
-  if(lvPlay&&lvPlay.state==="suspended")lvPlay.resume();
-  return lvPlay;
-}
-["pointerdown","touchstart","keydown"].forEach(function(n){document.addEventListener(n,function(){if(lvLive&&lvLive.on)lvPC()},true)});
-function lvDuck(){ // ลดเสียงวิทยุระหว่างพูดสด
-  var on=lvLive&&lvLive.on&&!lvMute||lvOn;
-  rdA.volume=on?0.08:+$("rdv").value;
-}
-function lvShow(){
-  var bar=$("lvbar");bar.textContent="";
-  var on=!!(lvLive&&lvLive.on);
-  bar.style.display=on?"flex":"none";
-  if(on){
-    var s=document.createElement("span");s.style.flex="1";
-    s.textContent=(lvOn?"🔴 คุณกำลังพูดสด…":"🔴 กำลังพูดสด: "+(lvLive.n||"ผู้ดูแล"));bar.appendChild(s);
-    if(!lvOn){var b=document.createElement("button");b.textContent=lvMute?"🔊 เปิดเสียง":"🔇 ปิดเสียงสด";b.style.cssText="min-height:24px;padding:2px 8px;font-size:12px";
-      b.onclick=function(){lvMute=!lvMute;lvNext=0;lvDuck();lvShow()};bar.appendChild(b)}
-  }
-  $("lvb").className=lvOn?"rec":"";$("lvb").textContent=lvOn?"⏹ หยุดพูดสด":"📡 พูดสด";
-  lvDuck();
-}
-function lvPlayChunk(p){
-  if(lvMute||lvOn)return;
-  var c=lvPC();if(!c)return;
-  var bin=atob(p),n=bin.length>>1,f=new Float32Array(n);
-  for(var i=0;i<n;i++){var v=bin.charCodeAt(2*i)|(bin.charCodeAt(2*i+1)<<8);if(v>32767)v-=65536;f[i]=v/32768}
-  var buf=c.createBuffer(1,n,LVR);buf.getChannelData(0).set(f);
-  var src=c.createBufferSource();src.buffer=buf;src.connect(c.destination);
-  var t=Math.max(c.currentTime+0.2,lvNext);
-  if(t-c.currentTime>1.5)t=c.currentTime+0.2; // ตัดส่วนที่ค้างเพื่อไม่ให้หน่วงสะสม
-  src.start(t);lvNext=t+buf.duration;
-}
-function lvPump(){
-  if(lvBusy||!lvQ.length)return;
-  lvBusy=true;
-  api("/api/live",{st:"data",p:lvQ.shift()}).then(function(j){
-    lvBusy=false;
-    if(j._s===409||j._s===403){lvStop(false);return}
-    lvPump();
-  });
-}
-function lvEnc(a){
-  var u=new Uint8Array(a.length*2);
-  for(var i=0;i<a.length;i++){u[2*i]=a[i]&255;u[2*i+1]=(a[i]>>8)&255}
-  var s="";for(var k=0;k<u.length;k+=8192)s+=String.fromCharCode.apply(null,u.subarray(k,k+8192));
-  return btoa(s);
-}
-function lvFeed(inp,rate){
-  var ratio=rate/LVR;
-  for(var i=0;i<inp.length;i++){
-    lvAcc+=inp[i];lvCnt++;lvPh+=1;
-    if(lvPh>=ratio){
-      lvPh-=ratio;var v=lvAcc/lvCnt;lvAcc=0;lvCnt=0;
-      v=Math.max(-1,Math.min(1,v));lvOut.push(v<0?v*32768:v*32767);
-    }
-  }
-  while(lvOut.length>=4800){
-    lvQ.push(lvEnc(lvOut.splice(0,4800)));
-    if(lvQ.length>8)lvQ.shift(); // เน็ตช้า: ทิ้งช่วงเก่าเพื่อไม่ให้เสียงหน่วง
-  }
-  lvPump();
-}
-function lvStop(tell){
-  if(!lvOn)return;
-  lvOn=false;
-  try{lvProc.disconnect();lvSrc.disconnect()}catch(e){}
-  try{lvStream.getTracks().forEach(function(t){t.stop()})}catch(e){}
-  try{lvCtx.close()}catch(e){}
-  lvProc=lvSrc=lvStream=lvCtx=null;lvQ=[];lvOut=[];
-  if(tell!==false)api("/api/live",{st:"stop"});
-  if(lvLive&&lvLive.u===uid)lvLive=null;
-  lvShow();
-}
-$("lvb").onclick=async function(){
-  if(!admin&&!myDj)return;
-  if(lvOn){lvStop();return}
-  if(mr){note("กำลังอัดข้อความเสียงอยู่ ปิดก่อนนะ");return}
-  if(!AC()||!navigator.mediaDevices){note("เบราว์เซอร์นี้ไม่รองรับการพูดสด");return}
-  try{lvStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}})}
-  catch(e){note("ใช้ไมโครโฟนไม่ได้ ตรวจสอบสิทธิ์การเข้าถึง");return}
-  lvCtx=new (AC())();if(lvCtx.state==="suspended")lvCtx.resume();
-  lvSrc=lvCtx.createMediaStreamSource(lvStream);
-  lvProc=lvCtx.createScriptProcessor(4096,1,1);
-  lvAcc=lvCnt=lvPh=0;lvOut=[];lvQ=[];
-  lvProc.onaudioprocess=function(e){if(lvOn)lvFeed(e.inputBuffer.getChannelData(0),lvCtx.sampleRate)};
-  lvSrc.connect(lvProc);lvProc.connect(lvCtx.destination); // ไม่คัดลอกเสียงออกลำโพง จึงไม่มีเสียงสะท้อน
-  lvOn=true;lvLive={on:true,n:me,u:uid};lvShow();
-  api("/api/live",{st:"start",n:me}).then(function(j){if(j._s!==200){lvStop(false);note("เริ่มพูดสดไม่สำเร็จ")}});
-};
-
 // ---------- แอดมิน ----------
 $("adm").onclick=function(){
-  if(admin){ak="";try{localStorage.removeItem("smak")}catch(e){}connect();return}
+  if(admin){if(liveStream)voiceStop();voiceCloseAll();ak="";try{localStorage.removeItem("smak")}catch(e){}connect();return}
   var k=prompt("ใส่รหัสแอดมิน");if(!k)return;
   ak=k.trim();connect(true);
 };
@@ -532,27 +454,38 @@ function connect(tryAdmin){
     uid=x.me.id;admin=!!x.me.admin;banUntil=x.me.ban||0;myPv=x.me.pv||0;
     if(tryAdmin&&!admin){ak="";note("รหัสแอดมินไม่ถูกต้อง")}
     else if(ak){try{localStorage.setItem("smak",ak)}catch(e){}}
-    if(!ak)admin=false;
+    if(!ak)admin=false;$("liveMicBar").style.display=admin?"flex":"none";
     chat=[].concat(x.msgs.general||[],x.msgs.checkpoint||[]);
     people=x.people||[];dm=x.dms||[];ann=x.announce||null;showAnn();bans=x.bans||{};
-    myDj=!!x.me.dj;syncDj();
-    lvLive=x.live||null;
-    if(lvOn&&!admin&&!myDj)lvStop(false);
-    else if(lvOn&&!(lvLive&&lvLive.u===uid)){lvLive={on:true,n:me,u:uid};api("/api/live",{st:"start",n:me})}
-    lvShow();
     if(myPic&&!myPv)uploadPic();
     setAv();push();render();renderDm();galleryRender();galleryLoad();
   });
   es.addEventListener("msg",function(e){chat.push(JSON.parse(e.data));if(chat.length>300)chat.shift();render()});
   es.addEventListener("del",function(e){var x=JSON.parse(e.data);chat=chat.filter(function(m){return !(m.u===x.u&&m.ts===x.ts&&(m.r||"general")===x.r)});render()});
-  es.addEventListener("people",function(e){people=JSON.parse(e.data);syncDj();render()});
+  es.addEventListener("people",function(e){people=JSON.parse(e.data);render()});
   es.addEventListener("dm",function(e){dm.push(JSON.parse(e.data));renderDm();render()});
   es.addEventListener("ban",function(e){banUntil=JSON.parse(e.data).until||0;if(banUntil)chkBan();else note(ph())});
   es.addEventListener("announce",function(e){ann=JSON.parse(e.data);showAnn()});
   es.addEventListener("gallery",function(){galleryLoad()});
-  es.addEventListener("live",function(e){var x=JSON.parse(e.data);if(lvOn&&!x.on){lvStop(false);return}lvLive=x.on?x:null;lvNext=0;if(x.on)lvPC();lvShow()});
-  es.addEventListener("pcm",function(e){lvPlayChunk(JSON.parse(e.data).p)});
   es.addEventListener("bans",function(e){bans=JSON.parse(e.data);updBan()});
+  es.addEventListener("voice-start",function(e){var v=JSON.parse(e.data);if(!admin){liveSession=v.session;voiceApi("voice-signal",{target:v.adminId,session:v.session,signal:{type:"ready"}})}});
+  es.addEventListener("voice-stop",function(){voiceCloseAll();liveSession=""});
+  es.addEventListener("voice-signal",async function(e){
+    var v=JSON.parse(e.data);if(!v||v.session!==liveSession||!v.signal)return;
+    try{
+      if(admin&&v.signal.type==="ready"){
+        var pc=voicePeer(v.from),offer=await pc.createOffer();await pc.setLocalDescription(offer);
+        voiceApi("voice-signal",{target:v.from,session:liveSession,signal:{type:"offer",description:pc.localDescription}});
+      }else if(!admin&&v.signal.type==="offer"){
+        var pc=voicePeer(v.from);await pc.setRemoteDescription(v.signal.description);voiceFlushIce(v.from);var answer=await pc.createAnswer();await pc.setLocalDescription(answer);
+        voiceApi("voice-signal",{target:v.from,session:liveSession,signal:{type:"answer",description:pc.localDescription}});
+      }else if(admin&&v.signal.type==="answer"){
+        var pc=livePeers[v.from];if(pc){await pc.setRemoteDescription(v.signal.description);voiceFlushIce(v.from)}
+      }else if(v.signal.type==="ice"){
+        if(v.signal.candidate)voiceAddIce(v.from,v.signal.candidate);
+      }
+    }catch(err){}
+  });
   es.onerror=function(){conn=false;render()};
 }
 connect();
