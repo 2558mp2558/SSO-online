@@ -6,7 +6,7 @@
 <title>แชตคนใกล้ตัว สมุทรสงคราม</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
---vip:#c084fc;--bg:#000;--card:#111;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#0f3a31;--bd:#2a2a2a;color-scheme:dark}
+--vip:#c084fc;--dj:#ff9f1c;--bg:#000;--card:#111;--tx:#eceff4;--mut:#8a93a3;--ac:#35c19a;--me:#0f3a31;--bd:#2a2a2a;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 *{box-sizing:border-box}
 body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Thai",sans-serif;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:8px;gap:5px}
@@ -86,13 +86,13 @@ button:disabled,select:disabled{opacity:.6}
   </div>
 </div>
 <div id="main"><div id="msgs" aria-live="polite"></div><div id="side"><div class="mut" style="margin-bottom:6px">ผู้ออนไลน์</div><div class="people" id="ppl"></div></div></div>
-<div class="row" id="liveMicBar"><button id="liveMic" type="button">🎙️ เริ่มพูดสดทั้ง 2 ห้อง</button><span id="liveMicHint">เฉพาะแอดมิน · เสียงอย่างเดียว</span></div>
+<div class="row" id="liveMicBar"><button id="liveMic" type="button">🎙️ เริ่มพูดสดทั้ง 2 ห้อง</button><span id="liveMicHint">เฉพาะแอดมินและ DJ · เสียงอย่างเดียว</span></div>
 <div class="row" id="composer"><input id="ci" maxlength="200" placeholder="พิมพ์ข้อความ…"><button id="ib" title="ส่งรูปภาพ">🖼️</button><input id="imf" type="file" accept="image/*" hidden style="display:none"><button id="vb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="cb" class="p" disabled>ส่ง</button></div>
 <div id="an" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:11;align-items:center;justify-content:center;padding:20px"><div class="card" style="max-width:420px;width:100%;text-align:center;border:3px solid #e5484d;padding:24px 16px"><div id="ant" style="color:#e5484d;font-size:30px;font-weight:800;line-height:1.4;word-break:break-word"></div><div class="mut" style="margin-top:14px">📢 ประกาศจากผู้ดูแลระบบ · แตะเพื่อปิด</div></div></div>
 <div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:95%;max-height:90%"><div id="lbs" style="position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:13px;padding:0 12px"></div><button id="lbx" style="position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;min-height:36px;padding:4px 12px;background:rgba(255,255,255,.15);color:#fff;border:0">✕</button></div>
 <div id="dmw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;align-items:center;justify-content:center;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">
  <div class="card" style="width:100%;max-width:440px;height:75%;display:flex;flex-direction:column;gap:8px">
-  <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
+  <div class="row"><b id="dmt" style="flex:1"></b><button id="dvip" style="display:none;font-size:12px"></button><button id="ddj" style="display:none;font-size:12px"></button><button id="dban" style="display:none;font-size:12px"></button><button id="dmx">✕</button></div>
   <div id="dmm" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
   <div class="mut">ส่งถึงผู้รับเท่านั้น แต่ไม่ได้เข้ารหัส ผู้ดูแลเซิร์ฟเวอร์อาจเปิดไฟล์ข้อมูลอ่านได้ อย่าส่งข้อมูลสำคัญ</div>
   <div class="row"><input id="dmi" maxlength="200"><button id="dib" title="ส่งรูปภาพ">🖼️</button><button id="dvb" title="ส่งข้อความเสียง (สูงสุด 15 วินาที)">🎙️</button><button id="dmb" class="p">ส่ง</button></div>
@@ -178,6 +178,7 @@ liveAudio.id="liveAudio";liveAudio.autoplay=true;liveAudio.controls=true;liveAud
 // ===== ตั้งค่าเสียงตอนแอดมินพูดสด =====
 var DUCK_LEVEL=0.08;   // วิทยุเหลือกี่เท่าของระดับปกติ (0.08 = เบามาก) ปรับได้
 var LIVE_GAIN=4;       // ขยายเสียงพูดสดกี่เท่า (1 = ปกติ, 4 = ดังมาก) ปรับได้
+var isDj=false;function canLive(){return admin||isDj}
 var rdDuck=false,rdRamp=null,liveCtx=null,liveSrc=null,liveGain=null,liveComp=null;
 function rdApply(){
   if(typeof rdA==="undefined")return;
@@ -206,6 +207,7 @@ function voiceBoost(stream){
 }
 function voiceUnboost(){if(liveSrc){try{liveSrc.disconnect()}catch(e){}liveSrc=null}liveSync()}
 ["pointerdown","touchstart","keydown"].forEach(function(n){document.addEventListener(n,function(){if(liveCtx&&liveCtx.state==="suspended")liveCtx.resume().catch(function(){})},true)});
+function voiceLocalStop(){if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}$("liveMic").textContent="🎙️ เริ่มพูดสดทั้ง 2 ห้อง";$("liveMic").classList.remove("on");$("liveMicHint").textContent="เฉพาะแอดมินและ DJ · เสียงอย่างเดียว";voiceDuck(false)}
 function voiceApi(route,obj){obj=obj||{};obj.n=me;return api("/api/"+route,obj)}
 function voiceCloseAll(){Object.keys(livePeers).forEach(function(id){try{livePeers[id].close()}catch(e){}});livePeers={};livePendingIce={};liveAudio.srcObject=null;liveAudio.style.display="none";voiceUnboost();if(!liveStream)voiceDuck(false)}
 function voiceAddIce(id,candidate){var pc=livePeers[id];if(!pc)return;if(pc.remoteDescription)pc.addIceCandidate(candidate).catch(function(){});else{if(!livePendingIce[id])livePendingIce[id]=[];livePendingIce[id].push(candidate)}}
@@ -214,33 +216,34 @@ function voicePeer(id){
   if(livePeers[id])return livePeers[id];
   var pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});livePeers[id]=pc;
   if(liveStream)liveStream.getTracks().forEach(function(t){pc.addTrack(t,liveStream)});
-  pc.ontrack=function(e){if(!admin&&e.streams&&e.streams[0]){liveAudio.srcObject=e.streams[0];liveAudio.style.display="block";voiceBoost(e.streams[0]);voiceDuck(true);liveAudio.play().catch(function(){note("มีเสียงถ่ายทอดสด แตะปุ่มเล่นเสียงเพื่อฟัง")})}};
+  pc.ontrack=function(e){if(!liveStream&&e.streams&&e.streams[0]){liveAudio.srcObject=e.streams[0];liveAudio.style.display="block";voiceBoost(e.streams[0]);voiceDuck(true);liveAudio.play().catch(function(){note("มีเสียงถ่ายทอดสด แตะปุ่มเล่นเสียงเพื่อฟัง")})}};
   pc.onicecandidate=function(e){if(e.candidate)voiceApi("voice-signal",{target:id,session:liveSession,signal:{type:"ice",candidate:e.candidate}})};
-  pc.onconnectionstatechange=function(){if(pc.connectionState==="failed"||pc.connectionState==="closed"){try{pc.close()}catch(e){}delete livePeers[id];if(!admin&&!Object.keys(livePeers).length){voiceUnboost();voiceDuck(false)}}};
+  pc.onconnectionstatechange=function(){if(pc.connectionState==="failed"||pc.connectionState==="closed"){try{pc.close()}catch(e){}delete livePeers[id];if(!liveStream&&!Object.keys(livePeers).length){voiceUnboost();voiceDuck(false)}}};
   return pc;
 }
 async function voiceStart(){
-  if(!admin)return;
+  if(!canLive())return;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){note("เบราว์เซอร์นี้ใช้ไมค์สดไม่ได้");return}
   try{liveStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false})}
   catch(e){note("เปิดไมโครโฟนไม่ได้ กรุณาอนุญาตการใช้ไมค์");return}
-  var r=await voiceApi("voice-start",{});if(r._s!==200){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null;note("เริ่มถ่ายทอดสดไม่สำเร็จ");return}
+  var r=await voiceApi("voice-start",{});if(r._s!==200){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null;note(r._s===409?"มี DJ คนอื่นกำลังพูดสดอยู่":"เริ่มถ่ายทอดสดไม่สำเร็จ");return}
   liveSession=r.session||"";voiceDuck(true);
   $("liveMic").textContent="⏹ หยุดพูดสด";$("liveMic").classList.add("on");$("liveMicHint").textContent="กำลังพูดสด · แชตยังใช้งานได้";note("กำลังถ่ายทอดสดไปทั้ง 2 ห้อง");
 }
-async function voiceStop(){if(!admin)return;await voiceApi("voice-stop",{session:liveSession});voiceCloseAll();if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}liveSession="";$("liveMic").textContent="🎙️ เริ่มพูดสดทั้ง 2 ห้อง";$("liveMic").classList.remove("on");$("liveMicHint").textContent="เฉพาะแอดมิน · เสียงอย่างเดียว";note(ph())}
-$("liveMic").onclick=function(){if(!admin)return;if(liveStream)voiceStop();else voiceStart()};
+async function voiceStop(){if(!liveStream)return;await voiceApi("voice-stop",{session:liveSession});voiceCloseAll();if(liveStream){liveStream.getTracks().forEach(function(t){t.stop()});liveStream=null}liveSession="";$("liveMic").textContent="🎙️ เริ่มพูดสดทั้ง 2 ห้อง";$("liveMic").classList.remove("on");$("liveMicHint").textContent="เฉพาะแอดมินและ DJ · เสียงอย่างเดียว";note(ph())}
+$("liveMic").onclick=function(){if(!canLive())return;if(liveStream)voiceStop();else voiceStart()};
 
 au.onplay=au.onpause=au.onended=function(){render();renderDm()};
 function playV(m){var key=(m.u||m.a)+"|"+m.ts;if(curKey===key&&!au.paused){au.pause();return}curKey=key;au.src=m.au;au.play().catch(function(){})}
-function sfx(o){return o.adm?" (ผู้ดูแลแชท)":o.vip?" (vip)":""}
-function tone(o){return o.adm?"#e5484d":o.vip?"var(--vip)":""}
-function nameSpan(name,isAdm,isVip){var o={adm:isAdm,vip:isVip},s=document.createElement("span");s.textContent=name+sfx(o);if(tone(o))s.style.cssText="color:"+tone(o)+";font-weight:700";return s}
+function sfx(o){return o.adm?" (ผู้ดูแลแชท)":o.dj?"":o.vip?" (vip)":""}
+function pfx(o){return o.dj&&!o.adm?"(DJ) ":""}
+function tone(o){return o.adm?"#e5484d":o.dj?"var(--dj)":o.vip?"var(--vip)":""}
+function nameSpan(name,isAdm,isVip,isDj2){var o={adm:isAdm,vip:isVip,dj:isDj2},s=document.createElement("span");s.textContent=pfx(o)+name+sfx(o);if(tone(o))s.style.cssText="color:"+tone(o)+";font-weight:700";return s}
 function render(){
   var all=people.filter(function(p){return p.id!==uid}),nb=all.filter(function(p){return p.bot}).length;
   var un={};dm.forEach(function(m){if(m.a!==uid&&m.ts>(seen[m.a]||loadTs))un[m.a]=1});var nu=Object.keys(un).length;
   $("cnt").textContent=(conn?"🟢":"🔴")+" ออนไลน์ "+(all.length-nb+1)+" คน"+(nb?" · 🤖 "+nb+" บอท":"")+(admin?" · 👑":"")+(nu?" · 🔔 "+nu+" ข้อความส่วนตัว":"");
-  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("liveMicBar").style.display=admin?"flex":"none";
+  updVip();$("adm").textContent=admin?"👑":"🔑";$("anb").style.display=admin?"":"none";$("liveMicBar").style.display=canLive()?"flex":"none";
   var pe=$("ppl"),box=$("msgs");pe.textContent="";box.textContent="";
   if(d===null){pe.className="mut";pe.textContent="เลือกอำเภอของคุณเพื่อเริ่มแชต";
     var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="เลือกอำเภอด้านบนก่อนนะ";box.appendChild(h);return}
@@ -249,13 +252,13 @@ function render(){
   if(!list.length)pe.textContent="ยังไม่มีคนอื่นออนไลน์ในระยะ";
   list.forEach(function(p){
     var c=document.createElement("div"),b=document.createElement("b");c.className="chip";
-    b.textContent=(un[p.id]?"🔔 ":"")+p.n+(p.bot?" 🤖":"")+sfx(p);c.title="แตะเพื่อกระซิบ";if(tone(p))b.style.color=tone(p);
+    b.textContent=(un[p.id]?"🔔 ":"")+pfx(p)+p.n+(p.bot?" 🤖":"")+sfx(p);c.title="แตะเพื่อกระซิบ";if(tone(p))b.style.color=tone(p);
     c.onclick=function(){openDm(p)};c.appendChild(avEl(p.id,p.n,p.pv));c.appendChild(b);c.appendChild(document.createTextNode(far(p.d)));pe.appendChild(c)});
   chat.filter(function(m){return (m.r||"general")===room}).sort(function(a,b){return a.ts-b.ts}).forEach(function(m){
     if(!AREAS[m.d])return;var mine=m.u===uid;if(!mine&&!ok(m.d))return;
     var e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
+    s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip,m.dj));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
     if(admin){
@@ -304,7 +307,7 @@ Array.prototype.forEach.call(tb,function(b){b.onclick=function(){room=b.dataset.
 // ---------- ข้อความกระซิบ ----------
 function openDm(p){
   dmPeer=p;
-  $("dmt").textContent="🤫 กระซิบถึง "+p.n+(p.bot?" 🤖":"")+sfx(p);$("dmt").style.color=tone(p);
+  $("dmt").textContent="🤫 กระซิบถึง "+pfx(p)+p.n+(p.bot?" 🤖":"")+sfx(p);$("dmt").style.color=tone(p);
   updVip();armed=false;$("dban").style.display=(admin&&p.id!==uid&&!p.adm&&!p.bot)?"":"none";updBan();
   $("dmi").placeholder="พิมพ์ข้อความส่วนตัว…";
   $("dmw").style.display="flex";renderDm();render();
@@ -317,7 +320,7 @@ function renderDm(){
   list.forEach(function(m){
     var mine=m.a===uid,e=document.createElement("div"),s=document.createElement("small");
     e.className="m"+(mine?" me":"");
-    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
+    s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip,m.dj));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
     s.insertBefore(avEl(m.a,mine?me:m.an,m.pv),s.firstChild);
     e.appendChild(s);e.appendChild(body(m));box.appendChild(e);
   });
@@ -339,10 +342,20 @@ $("dban").onclick=function(){
 // ---------- แต่งตั้ง VIP (แอดมิน) ----------
 function peerP(){return dmPeer?people.filter(function(x){return x.id===dmPeer.id})[0]:null}
 function updVip(){
-  var b=$("dvip");
+  updDj();var b=$("dvip");
   if(!dmPeer||!admin||dmPeer.bot||dmPeer.adm||dmPeer.id===uid){b.style.display="none";return}
   var p=peerP();b.style.display="";b.textContent=(p&&p.vip)?"💜 ยกเลิก VIP":"💜 แต่งตั้ง VIP 30 วัน";
 }
+function updDj(){
+  var b=$("ddj");
+  if(!dmPeer||!admin||dmPeer.bot||dmPeer.adm||dmPeer.id===uid){b.style.display="none";return}
+  var p=peerP();b.style.display="";b.textContent=(p&&p.dj)?"🎧 ยกเลิก DJ":"🎧 แต่งตั้ง DJ"
+}
+$("ddj").onclick=function(){
+  if(!admin||!dmPeer)return;var p=peerP(),on=!!(p&&p.dj);
+  if(!on&&!confirm("แต่งตั้ง "+dmPeer.n+" เป็น DJ (พูดสดได้)?"))return;
+  api("/api/dj",{target:dmPeer.id,on:!on});
+};
 $("dvip").onclick=function(){
   if(!admin||!dmPeer)return;var p=peerP(),on=!!(p&&p.vip);
   if(!on&&!confirm("แต่งตั้ง "+dmPeer.n+" เป็น VIP นาน 30 วัน?"))return;
@@ -486,10 +499,10 @@ function connect(tryAdmin){
   es=new EventSource("/events?tk="+encodeURIComponent(tk)+(ak?"&ak="+encodeURIComponent(ak):""));
   es.addEventListener("init",function(e){
     var x=JSON.parse(e.data);conn=true;
-    uid=x.me.id;admin=!!x.me.admin;banUntil=x.me.ban||0;myPv=x.me.pv||0;
+    uid=x.me.id;admin=!!x.me.admin;isDj=!!x.me.dj;banUntil=x.me.ban||0;myPv=x.me.pv||0;
     if(tryAdmin&&!admin){ak="";note("รหัสแอดมินไม่ถูกต้อง")}
     else if(ak){try{localStorage.setItem("smak",ak)}catch(e){}}
-    if(!ak)admin=false;$("liveMicBar").style.display=admin?"flex":"none";
+    if(!ak)admin=false;$("liveMicBar").style.display=canLive()?"flex":"none";
     chat=[].concat(x.msgs.general||[],x.msgs.checkpoint||[]).filter(nobot);
     people=(x.people||[]).filter(nobot);dm=(x.dms||[]).filter(nobot);ann=x.announce||null;showAnn();bans=x.bans||{};
     if(myPic&&!myPv)uploadPic();
@@ -503,18 +516,19 @@ function connect(tryAdmin){
   es.addEventListener("announce",function(e){ann=JSON.parse(e.data);showAnn()});
   es.addEventListener("gallery",function(){galleryLoad()});
   es.addEventListener("bans",function(e){bans=JSON.parse(e.data);updBan()});
-  es.addEventListener("voice-start",function(e){var v=JSON.parse(e.data);if(!admin){liveSession=v.session;voiceApi("voice-signal",{target:v.adminId,session:v.session,signal:{type:"ready"}})}});
-  es.addEventListener("voice-stop",function(){voiceCloseAll();liveSession=""});
+  es.addEventListener("voice-start",function(e){var v=JSON.parse(e.data);if(!liveStream){liveSession=v.session;voiceApi("voice-signal",{target:v.adminId,session:v.session,signal:{type:"ready"}})}});
+  es.addEventListener("voice-stop",function(){voiceCloseAll();if(liveStream){voiceLocalStop();note("การพูดสดถูกหยุดแล้ว")}liveSession=""});
+  es.addEventListener("dj",function(e){isDj=!!JSON.parse(e.data).on;render();note(isDj?"คุณได้รับแต่งตั้งเป็น DJ แล้ว":"สถานะ DJ ของคุณถูกยกเลิก")});
   es.addEventListener("voice-signal",async function(e){
     var v=JSON.parse(e.data);if(!v||v.session!==liveSession||!v.signal)return;
     try{
-      if(admin&&v.signal.type==="ready"){
+      if(liveStream&&v.signal.type==="ready"){
         var pc=voicePeer(v.from),offer=await pc.createOffer();await pc.setLocalDescription(offer);
         voiceApi("voice-signal",{target:v.from,session:liveSession,signal:{type:"offer",description:pc.localDescription}});
-      }else if(!admin&&v.signal.type==="offer"){
+      }else if(!liveStream&&v.signal.type==="offer"){
         var pc=voicePeer(v.from);await pc.setRemoteDescription(v.signal.description);voiceFlushIce(v.from);var answer=await pc.createAnswer();await pc.setLocalDescription(answer);
         voiceApi("voice-signal",{target:v.from,session:liveSession,signal:{type:"answer",description:pc.localDescription}});
-      }else if(admin&&v.signal.type==="answer"){
+      }else if(liveStream&&v.signal.type==="answer"){
         var pc=livePeers[v.from];if(pc){await pc.setRemoteDescription(v.signal.description);voiceFlushIce(v.from)}
       }else if(v.signal.type==="ice"){
         if(v.signal.candidate)voiceAddIce(v.from,v.signal.candidate);

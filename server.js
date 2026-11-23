@@ -8,13 +8,14 @@ const DATA = path.join(__dirname, 'data.json');
 const MEDIA_TTL = 60 * 60 * 1000; // รูป/เสียงหมดอายุใน 1 ชม.
 const MAX_MSGS = 300, MAX_DMS = 2000;
 
-let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, gallery: [] };
+let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, djs: {}, gallery: [] };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8'))); } catch (e) {}
 db.gallery = Array.isArray(db.gallery) ? db.gallery : [];
 // ลบข้อความของบอทที่ค้างอยู่ในข้อมูลเดิม
 db.msgs.general = (db.msgs.general || []).filter(function (m) { return !m.bot; });
 db.msgs.checkpoint = (db.msgs.checkpoint || []).filter(function (m) { return !m.bot; });
 db.dms = (db.dms || []).filter(function (m) { return !m.bot; });
+db.djs = db.djs || {};
 let saveT;
 function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.writeFile(DATA, JSON.stringify(db), function () {}); }, 1500); }
 
@@ -32,6 +33,7 @@ function isAdmin(ak) {
 const clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 const pvOf = id => (db.pics[id] ? db.pics[id].v : 0);
 const vipOf = id => db.vips[id] > Date.now();
+const djOf = id => !!db.djs[id];
 const banOf = id => (db.bans[id] > Date.now() ? db.bans[id] : 0);
 
 function sse(res, ev, data) { res.write('event: ' + ev + '\ndata: ' + JSON.stringify(data) + '\n\n'); }
@@ -43,7 +45,7 @@ function toAdmins(ev, data) { users.forEach(function (u) { if (u.adm) u.conns.fo
 function people() {
   const out = [];
   users.forEach(function (u, id) {
-    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id) });
+    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id), dj: djOf(id) });
   });
   return out;
 }
@@ -121,6 +123,16 @@ function handleApi(req, res, route) {
       return json(res, 200, { pv: db.pics[id].v });
     }
 
+    if (route === 'dj') {
+      if (!adm) return json(res, 403, { error: 'forbidden' });
+      const t = String(b.target || ''), tu = users.get(t);
+      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (b.on) db.djs[t] = true; else delete db.djs[t];
+      if (!b.on && liveVoice && liveVoice.adminId === t) { liveVoice = null; toAll('voice-stop', { ok: true }); }
+      save(); pushPeople(); toUsers([t], 'dj', { on: !!b.on });
+      return json(res, 200, { ok: true });
+    }
+
     if (route === 'vip') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), tu = users.get(t);
@@ -161,7 +173,8 @@ function handleApi(req, res, route) {
     }
 
     if (route === 'voice-start') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
+      if (!(adm || djOf(id))) return json(res, 403, { error: 'forbidden' });
+      if (liveVoice && liveVoice.adminId !== id) return json(res, 409, { error: 'busy' });
       const session = crypto.randomBytes(12).toString('hex');
       liveVoice = { adminId: id, session: session, participants: new Set() };
       toAll('voice-start', { adminId: id, session: session });
@@ -169,7 +182,7 @@ function handleApi(req, res, route) {
     }
 
     if (route === 'voice-stop') {
-      if (!adm || !liveVoice || liveVoice.adminId !== id || b.session !== liveVoice.session) return json(res, 403, { error: 'forbidden' });
+      if (!liveVoice || b.session !== liveVoice.session || !(liveVoice.adminId === id || adm)) return json(res, 403, { error: 'forbidden' });
       liveVoice = null;
       toAll('voice-stop', { ok: true });
       return json(res, 200, { ok: true });
@@ -180,14 +193,15 @@ function handleApi(req, res, route) {
       if (!liveVoice || b.session !== liveVoice.session || !target || !sig || typeof sig !== 'object') return json(res, 400, { error: 'bad' });
       const dest = users.get(target);
       if (!dest || !dest.conns.size || target === id) return json(res, 404, { error: 'offline' });
+      const isHost = id === liveVoice.adminId;
       if (sig.type === 'ready') {
-        if (adm || target !== liveVoice.adminId || id === liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
+        if (isHost || target !== liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
         liveVoice.participants.add(id);
       } else if (sig.type === 'offer') {
-        if (!adm || id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
+        if (!isHost || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
       } else if (sig.type === 'answer' || sig.type === 'ice') {
-        if (adm) {
-          if (id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
+        if (isHost) {
+          if (!liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
         } else if (target !== liveVoice.adminId || !liveVoice.participants.has(id)) return json(res, 403, { error: 'forbidden' });
       } else return json(res, 400, { error: 'bad_signal' });
       const payload = { from: id, session: liveVoice.session, signal: sig };
@@ -207,7 +221,7 @@ function handleApi(req, res, route) {
       if (route === 'send') {
         if (!(b.d === 0 || b.d === 1 || b.d === 2)) return json(res, 400, { error: 'bad' });
         const r = b.r === 'checkpoint' ? 'checkpoint' : 'general';
-        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), pv: pvOf(id) }, c);
+        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id) }, c);
         const list = db.msgs[r]; list.push(m);
         while (list.length > MAX_MSGS) list.shift();
         save(); toAll('msg', m);
@@ -216,7 +230,7 @@ function handleApi(req, res, route) {
 
       const to = String(b.to || '');
       if (!to || to === id) return json(res, 400, { error: 'bad' });
-      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), pv: pvOf(id), ts: now }, c);
+      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id), ts: now }, c);
       db.dms.push(m);
       while (db.dms.length > MAX_DMS) db.dms.shift();
       save(); toUsers([id, to], 'dm', m);
@@ -237,7 +251,7 @@ function handleEvents(req, res, q) {
   if (!u) { u = { conns: new Set() }; users.set(id, u); }
   u.conns.add(res); u.adm = adm;
   sse(res, 'init', {
-    me: { id: id, admin: adm, ban: banOf(id), pv: pvOf(id) },
+    me: { id: id, admin: adm, dj: djOf(id), ban: banOf(id), pv: pvOf(id) },
     msgs: db.msgs,
     people: people(),
     dms: db.dms.filter(function (m) { return m.a === id || m.b === id; }),
