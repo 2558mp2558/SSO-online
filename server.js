@@ -8,10 +8,9 @@ const DATA = path.join(__dirname, 'data.json');
 const MEDIA_TTL = 60 * 60 * 1000; // รูป/เสียงหมดอายุใน 1 ชม.
 const MAX_MSGS = 300, MAX_DMS = 2000;
 
-let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, djs: {}, gallery: [] };
+let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, gallery: [] };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8'))); } catch (e) {}
 db.gallery = Array.isArray(db.gallery) ? db.gallery : [];
-db.djs = db.djs || {};
 // ลบข้อความของบอทที่ค้างอยู่ในข้อมูลเดิม
 db.msgs.general = (db.msgs.general || []).filter(function (m) { return !m.bot; });
 db.msgs.checkpoint = (db.msgs.checkpoint || []).filter(function (m) { return !m.bot; });
@@ -20,8 +19,8 @@ let saveT;
 function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.writeFile(DATA, JSON.stringify(db), function () {}); }, 1500); }
 
 const users = new Map(); // id -> {conns:Set, n, d, adm}
-let live = null; // การพูดสดของแอดมิน {id, n, last}
 const lastSend = new Map();
+let liveVoice = null; // {adminId, session}
 
 // ---------- บัญชีอัตโนมัติ 33 บัญชี สนทนาในห้องสาธารณะ ----------
 const BOT_NAMES = ["น้องฟ้า","พี่โจ้","ลุงชาติ","ป้าแต๋ว","น้ำฝน","บอยแม่กลอง","แพรวา","ต้นกล้า","ครูหนุ่ม","เจ๊อ้อย","หมูหยอง","ไก่ทอด","มะลิ","พิมพ์","โอ๊ต","เบสท์","กานต์","นุ่น","ปลาทู","ส้มโอ","ลิ้นจี่","ตาโต","อาร์ม","แจม","กุ้ง","ปอนด์","ฝ้าย","เมษา","ตุ๊กตา","บอสน้อย","ลุงสมชัย","พี่หนึ่ง","น้องเมย์"];
@@ -76,7 +75,6 @@ function isAdmin(ak) {
 const clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 const pvOf = id => (db.pics[id] ? db.pics[id].v : 0);
 const vipOf = id => db.vips[id] > Date.now();
-const djOf = id => db.djs[id] > Date.now();
 const banOf = id => (db.bans[id] > Date.now() ? db.bans[id] : 0);
 
 function sse(res, ev, data) { res.write('event: ' + ev + '\ndata: ' + JSON.stringify(data) + '\n\n'); }
@@ -84,13 +82,11 @@ function toUsers(ids, ev, data) {
   ids.forEach(function (id) { const u = users.get(id); if (u) u.conns.forEach(function (r) { sse(r, ev, data); }); });
 }
 function toAll(ev, data) { users.forEach(function (u) { u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
-function toOthers(exceptId, ev, data) { users.forEach(function (u, id) { if (id !== exceptId) u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
-function stopLive() { if (live) { live = null; toAll('live', { on: false }); } }
 function toAdmins(ev, data) { users.forEach(function (u) { if (u.adm) u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
 function people() {
   const out = [];
   users.forEach(function (u, id) {
-    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id), dj: djOf(id) });
+    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id) });
   });
   return out.concat(BOTS);
 }
@@ -177,36 +173,6 @@ function handleApi(req, res, route) {
       return json(res, 200, { ok: true });
     }
 
-    if (route === 'dj') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      const t = String(b.target || ''), tu = users.get(t);
-      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
-      if (b.on) db.djs[t] = Date.now() + 30 * 86400000; else { delete db.djs[t]; if (live && live.id === t) stopLive(); }
-      save(); pushPeople();
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'live') {
-      if (!adm && !djOf(id)) return json(res, 403, { error: 'forbidden' });
-      if (b.st === 'start') {
-        live = { id: id, n: name, last: Date.now() };
-        toAll('live', { on: true, n: name, u: id });
-        return json(res, 200, { ok: true });
-      }
-      if (b.st === 'stop') {
-        if (live && live.id === id) stopLive();
-        return json(res, 200, { ok: true });
-      }
-      if (b.st === 'data') {
-        if (!live || live.id !== id) return json(res, 409, { error: 'not_live' });
-        if (typeof b.p !== 'string' || b.p.length > 40000 || !/^[A-Za-z0-9+/]+=*$/.test(b.p)) return json(res, 400, { error: 'bad' });
-        live.last = Date.now();
-        toOthers(id, 'pcm', { p: b.p });
-        return json(res, 200, { ok: true });
-      }
-      return json(res, 400, { error: 'bad' });
-    }
-
     if (route === 'announce') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       db.announce = { t: clean(b.t, 150), ts: Date.now() };
@@ -237,6 +203,41 @@ function handleApi(req, res, route) {
       return json(res, 200, { ok: true });
     }
 
+    if (route === 'voice-start') {
+      if (!adm) return json(res, 403, { error: 'forbidden' });
+      const session = crypto.randomBytes(12).toString('hex');
+      liveVoice = { adminId: id, session: session, participants: new Set() };
+      toAll('voice-start', { adminId: id, session: session });
+      return json(res, 200, { ok: true, session: session });
+    }
+
+    if (route === 'voice-stop') {
+      if (!adm || !liveVoice || liveVoice.adminId !== id || b.session !== liveVoice.session) return json(res, 403, { error: 'forbidden' });
+      liveVoice = null;
+      toAll('voice-stop', { ok: true });
+      return json(res, 200, { ok: true });
+    }
+
+    if (route === 'voice-signal') {
+      const target = String(b.target || ''), sig = b.signal;
+      if (!liveVoice || b.session !== liveVoice.session || !target || !sig || typeof sig !== 'object') return json(res, 400, { error: 'bad' });
+      const dest = users.get(target);
+      if (!dest || !dest.conns.size || target === id) return json(res, 404, { error: 'offline' });
+      if (sig.type === 'ready') {
+        if (adm || target !== liveVoice.adminId || id === liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
+        liveVoice.participants.add(id);
+      } else if (sig.type === 'offer') {
+        if (!adm || id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
+      } else if (sig.type === 'answer' || sig.type === 'ice') {
+        if (adm) {
+          if (id !== liveVoice.adminId || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
+        } else if (target !== liveVoice.adminId || !liveVoice.participants.has(id)) return json(res, 403, { error: 'forbidden' });
+      } else return json(res, 400, { error: 'bad_signal' });
+      const payload = { from: id, session: liveVoice.session, signal: sig };
+      toUsers([target], 'voice-signal', payload);
+      return json(res, 200, { ok: true });
+    }
+
     if (route === 'send' || route === 'dm') {
       const bn = banOf(id);
       if (bn) return json(res, 403, { error: 'banned', until: bn });
@@ -249,7 +250,7 @@ function handleApi(req, res, route) {
       if (route === 'send') {
         if (!(b.d === 0 || b.d === 1 || b.d === 2)) return json(res, 400, { error: 'bad' });
         const r = b.r === 'checkpoint' ? 'checkpoint' : 'general';
-        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id) }, c);
+        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), pv: pvOf(id) }, c);
         const list = db.msgs[r]; list.push(m);
         while (list.length > MAX_MSGS) list.shift();
         save(); toAll('msg', m);
@@ -258,7 +259,7 @@ function handleApi(req, res, route) {
 
       const to = String(b.to || '');
       if (!to || to === id) return json(res, 400, { error: 'bad' });
-      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id), ts: now }, c);
+      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), pv: pvOf(id), ts: now }, c);
       db.dms.push(m);
       while (db.dms.length > MAX_DMS) db.dms.shift();
       save(); toUsers([id, to], 'dm', m);
@@ -284,19 +285,23 @@ function handleEvents(req, res, q) {
   if (!u) { u = { conns: new Set() }; users.set(id, u); }
   u.conns.add(res); u.adm = adm;
   sse(res, 'init', {
-    me: { id: id, admin: adm, ban: banOf(id), pv: pvOf(id), dj: djOf(id) },
+    me: { id: id, admin: adm, ban: banOf(id), pv: pvOf(id) },
     msgs: db.msgs,
     people: people(),
     dms: db.dms.filter(function (m) { return m.a === id || m.b === id; }),
     bans: adm ? db.bans : {},
     announce: db.announce,
-    live: live ? { on: true, n: live.n, u: live.id } : null,
   });
   pushPeople();
+  if (liveVoice && liveVoice.adminId !== id) sse(res, 'voice-start', { adminId: liveVoice.adminId, session: liveVoice.session });
   const ka = setInterval(function () { res.write(': ping\n\n'); }, 25000);
   req.on('close', function () {
     clearInterval(ka); u.conns.delete(res);
-    if (!u.conns.size) { users.delete(id); if (live && live.id === id) setTimeout(function () { if (live && live.id === id && !users.has(id)) stopLive(); }, 6000); }
+    if (!u.conns.size) {
+      users.delete(id);
+      if (liveVoice && liveVoice.adminId === id) { liveVoice = null; toAll('voice-stop', { ok: true }); }
+      else if (liveVoice) liveVoice.participants.delete(id);
+    }
     pushPeople();
   });
 }
@@ -332,9 +337,6 @@ const server = http.createServer(function (req, res) {
 });
 
 
-// ปิดการพูดสดอัตโนมัติถ้าไม่มีเสียงส่งมานาน
-setInterval(function () { if (live && Date.now() - live.last > 10000) stopLive(); }, 3000);
-
 // ลบรูป/เสียงที่หมดอายุ
 setInterval(function () {
   const now = Date.now(); let ch = false;
@@ -343,7 +345,6 @@ setInterval(function () {
   if (ch) save();
   let vc = false;
   Object.keys(db.vips).forEach(function (k) { if (db.vips[k] <= now) { delete db.vips[k]; vc = true; } });
-  Object.keys(db.djs).forEach(function (k) { if (db.djs[k] <= now) { delete db.djs[k]; vc = true; if (live && live.id === k) stopLive(); } });
   if (vc) { save(); pushPeople(); }
 }, 60000);
 

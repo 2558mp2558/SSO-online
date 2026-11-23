@@ -49,7 +49,6 @@ button:disabled,select:disabled{opacity:.6}
 #side{width:118px;flex:none;overflow-y:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px}
 #msgs{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:120px}
 .m{max-width:88%;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 12px;font-size:15px;word-break:break-word}
-.m.adm{color:#e5484d}
 .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
 #mq{flex:none;border:2px solid #e5484d;border-radius:10px;overflow:hidden;white-space:nowrap;background:var(--card);padding:3px 0}
 #mqt{display:inline-block;color:#e5484d;font-weight:700;font-size:12px;animation:mq 85s linear infinite}
@@ -221,7 +220,7 @@ function render(){
   chat.filter(function(m){return (m.r||"general")===room}).sort(function(a,b){return a.ts-b.ts}).forEach(function(m){
     if(!AREAS[m.d])return;var mine=m.u===uid;if(!mine&&!ok(m.d))return;
     var e=document.createElement("div"),s=document.createElement("small");
-    e.className="m"+(mine?" me":"")+(m.adm?" adm":"");
+    e.className="m"+(mine?" me":"");
     s.appendChild(nameSpan(mine?"คุณ":m.n+(m.bot?" 🤖":""),m.adm,m.vip));
     s.appendChild(document.createTextNode((mine?"":" · "+far(m.d))+" · "+new Date(m.ts).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})));
     s.insertBefore(avEl(m.u,mine?me:m.n,m.pv),s.firstChild);
@@ -283,7 +282,7 @@ function renderDm(){
   if(!list.length){var h=document.createElement("div");h.className="mut";h.style.textAlign="center";h.textContent="ยังไม่มีข้อความ ลองทักทายดูสิ";box.appendChild(h)}
   list.forEach(function(m){
     var mine=m.a===uid,e=document.createElement("div"),s=document.createElement("small");
-    e.className="m"+(mine?" me":"")+(m.adm?" adm":"");
+    e.className="m"+(mine?" me":"");
     s.appendChild(nameSpan(mine?"คุณ":m.an,m.adm,m.vip));s.appendChild(document.createTextNode(" · "+hm(m.ts)));
     s.insertBefore(avEl(m.a,mine?me:m.an,m.pv),s.firstChild);
     e.appendChild(s);e.appendChild(body(m));box.appendChild(e);
