@@ -22,49 +22,6 @@ const users = new Map(); // id -> {conns:Set, n, d, adm}
 const lastSend = new Map();
 let liveVoice = null; // {adminId, session}
 
-// ---------- บัญชีอัตโนมัติ 33 บัญชี สนทนาในห้องสาธารณะ ----------
-const BOT_NAMES = ["น้องฟ้า","พี่โจ้","ลุงชาติ","ป้าแต๋ว","น้ำฝน","บอยแม่กลอง","แพรวา","ต้นกล้า","ครูหนุ่ม","เจ๊อ้อย","หมูหยอง","ไก่ทอด","มะลิ","พิมพ์","โอ๊ต","เบสท์","กานต์","นุ่น","ปลาทู","ส้มโอ","ลิ้นจี่","ตาโต","อาร์ม","แจม","กุ้ง","ปอนด์","ฝ้าย","เมษา","ตุ๊กตา","บอสน้อย","ลุงสมชัย","พี่หนึ่ง","น้องเมย์"];
-const BOTS = BOT_NAMES.map(function (n, i) { return { id: 'bot' + i, n: n, d: i % 3, pv: 0, adm: false, bot: true }; });
-const BOTMAP = {}; BOTS.forEach(function (b) { BOTMAP[b.id] = b; });
-const DM_REPLY = ["สวัสดีครับ 😊", "ขอบคุณที่ทักนะครับ ผมเป็นบอทผู้ช่วยของห้องแชต", "ได้รับข้อความแล้วครับ 🤖"];
-// ข้อความสาธารณะเป็นบทสนทนาทั่วไป ไม่สร้างข่าวหรือระบุพิกัดด่านตรวจที่ไม่ได้รับการยืนยัน
-const BOT_LINES = {
-  general: [
-    "วันนี้แถวแม่กลองอากาศเป็นอย่างไรกันบ้างครับ 🙂",
-    "ใครมีร้านอาหารอร่อย ๆ ในสมุทรสงคราม แนะนำกันได้นะครับ",
-    "สวัสดีสมาชิกทุกคนครับ ขอให้วันนี้เป็นวันที่ดีนะครับ 🤖",
-    "วันหยุดนี้มีใครวางแผนไปเที่ยวอัมพวาบ้างครับ",
-    "อย่าลืมพักสายตาและดื่มน้ำกันด้วยนะครับ",
-    "มีข่าวหรือกิจกรรมชุมชนดี ๆ ก็แบ่งปันกันได้ครับ",
-    "ใครชอบตลาดร่มหุบ ลองมาเล่าประสบการณ์กันได้นะครับ",
-    "ขอบคุณที่ช่วยกันพูดคุยอย่างสุภาพในห้องนี้ครับ"
-  ],
-  checkpoint: [
-    "ห้องนี้ใช้แลกเปลี่ยนข้อมูลการจราจรครับ โปรดตรวจสอบวันเวลาและแหล่งข่าวก่อนแชร์นะครับ 🤖",
-    "หากพบการปิดถนน รบกวนแจ้งเฉพาะข้อมูลที่ยืนยันได้และระบุช่วงเวลาด้วยครับ",
-    "ข้อมูลจุดตรวจอาจเปลี่ยนแปลงได้ โปรดปฏิบัติตามกฎหมายและป้ายจราจรเสมอครับ",
-    "ก่อนเดินทางตรวจสอบสภาพจราจรจากหน่วยงานทางการอีกครั้งนะครับ",
-    "ขอความร่วมมือไม่เผยแพร่ข่าวลือหรือข้อมูลส่วนบุคคลของผู้อื่นครับ",
-    "ถ้าแจ้งเหตุบนถนน กรุณาระบุบริเวณกว้าง ๆ และเวลา โดยไม่คาดเดาข้อมูลครับ"
-  ]
-};
-let botTurn = 0;
-function postBotMessage(room) {
-  const bot = BOTS[botTurn++ % BOTS.length];
-  const lines = BOT_LINES[room];
-  const m = { u: bot.id, n: bot.n, d: bot.d, r: room, ts: Date.now(), adm: false, vip: false, pv: 0, bot: true, k: 't', t: lines[Math.floor(Math.random() * lines.length)] };
-  const list = db.msgs[room];
-  list.push(m);
-  while (list.length > MAX_MSGS) list.shift();
-  save();
-  toAll('msg', m);
-}
-// สลับส่งข้อความทั้งสองห้องแบบไม่ถี่เกินไป
-let botRoomTurn = 0;
-setInterval(function () {
-  postBotMessage(botRoomTurn++ % 2 === 0 ? 'general' : 'checkpoint');
-}, 22000);
-
 const uidOf = tk => crypto.createHash('sha256').update(tk).digest('hex').slice(0, 16);
 const okTk = tk => typeof tk === 'string' && /^[0-9a-f]{16,100}$/.test(tk);
 function isAdmin(ak) {
@@ -88,7 +45,7 @@ function people() {
   users.forEach(function (u, id) {
     if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id) });
   });
-  return out.concat(BOTS);
+  return out;
 }
 const pushPeople = () => toAll('people', people());
 
@@ -167,7 +124,7 @@ function handleApi(req, res, route) {
     if (route === 'vip') {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), tu = users.get(t);
-      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
       if (b.on) db.vips[t] = Date.now() + 30 * 86400000; else delete db.vips[t];
       save(); pushPeople();
       return json(res, 200, { ok: true });
@@ -195,7 +152,7 @@ function handleApi(req, res, route) {
       if (!adm) return json(res, 403, { error: 'forbidden' });
       const t = String(b.target || ''), mins = Math.max(0, Math.min(1440, +b.mins || 0));
       const tu = users.get(t);
-      if (!t || t === id || BOTMAP[t] || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
+      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
       if (mins) db.bans[t] = Date.now() + mins * 60000; else delete db.bans[t];
       save();
       toUsers([t], 'ban', { until: banOf(t) });
@@ -263,11 +220,6 @@ function handleApi(req, res, route) {
       db.dms.push(m);
       while (db.dms.length > MAX_DMS) db.dms.shift();
       save(); toUsers([id, to], 'dm', m);
-      const bb = BOTMAP[to];
-      if (bb) setTimeout(function () {
-        const r = { a: to, b: id, an: bb.n, adm: false, pv: 0, ts: Date.now(), k: 't', t: DM_REPLY[Math.floor(Math.random() * DM_REPLY.length)], bot: true };
-        db.dms.push(r); save(); toUsers([id], 'dm', r);
-      }, 1500 + Math.random() * 2500);
       return json(res, 200, { ok: true });
     }
 

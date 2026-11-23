@@ -478,6 +478,8 @@ $("anb").onclick=function(){
   api("/api/announce",{t:v.trim()}).then(res);
 };
 
+// ซ่อนบอททั้งหมด (ทั้งรายชื่อผู้ออนไลน์ ข้อความห้องแชท และข้อความกระซิบ)
+function nobot(x){return !(x&&x.bot)}
 // ---------- เชื่อมต่อเซิร์ฟเวอร์ ----------
 function connect(tryAdmin){
   if(es)es.close();
@@ -488,15 +490,15 @@ function connect(tryAdmin){
     if(tryAdmin&&!admin){ak="";note("รหัสแอดมินไม่ถูกต้อง")}
     else if(ak){try{localStorage.setItem("smak",ak)}catch(e){}}
     if(!ak)admin=false;$("liveMicBar").style.display=admin?"flex":"none";
-    chat=[].concat(x.msgs.general||[],x.msgs.checkpoint||[]);
-    people=x.people||[];dm=x.dms||[];ann=x.announce||null;showAnn();bans=x.bans||{};
+    chat=[].concat(x.msgs.general||[],x.msgs.checkpoint||[]).filter(nobot);
+    people=(x.people||[]).filter(nobot);dm=(x.dms||[]).filter(nobot);ann=x.announce||null;showAnn();bans=x.bans||{};
     if(myPic&&!myPv)uploadPic();
     setAv();push();render();renderDm();galleryRender();galleryLoad();
   });
-  es.addEventListener("msg",function(e){chat.push(JSON.parse(e.data));if(chat.length>300)chat.shift();render()});
+  es.addEventListener("msg",function(e){var m=JSON.parse(e.data);if(m.bot)return;chat.push(m);if(chat.length>300)chat.shift();render()});
   es.addEventListener("del",function(e){var x=JSON.parse(e.data);chat=chat.filter(function(m){return !(m.u===x.u&&m.ts===x.ts&&(m.r||"general")===x.r)});render()});
-  es.addEventListener("people",function(e){people=JSON.parse(e.data);render()});
-  es.addEventListener("dm",function(e){dm.push(JSON.parse(e.data));renderDm();render()});
+  es.addEventListener("people",function(e){people=JSON.parse(e.data).filter(nobot);render()});
+  es.addEventListener("dm",function(e){var m=JSON.parse(e.data);if(m.bot)return;dm.push(m);renderDm();render()});
   es.addEventListener("ban",function(e){banUntil=JSON.parse(e.data).until||0;if(banUntil)chkBan();else note(ph())});
   es.addEventListener("announce",function(e){ann=JSON.parse(e.data);showAnn()});
   es.addEventListener("gallery",function(){galleryLoad()});
