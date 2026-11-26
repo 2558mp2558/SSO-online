@@ -1,321 +1,175 @@
-// server.js - เซิร์ฟเวอร์สำหรับ index.html (แชตคนใกล้ตัว สมุทรสงคราม)
-// ไม่ต้องติดตั้งแพ็กเกจเพิ่ม ใช้ Node.js 16 ขึ้นไป
-// รัน: ADMIN_KEY=รหัสของคุณ node server.js   แล้วเปิด http://localhost:3000
-const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
-const PORT = process.env.PORT || 3000;
-const ADMIN_KEY = process.env.ADMIN_KEY || 'm159357p';
-const DATA = path.join(__dirname, 'data.json');
-const MEDIA_TTL = 60 * 60 * 1000; // รูป/เสียงหมดอายุใน 1 ชม.
-const MAX_MSGS = 300, MAX_DMS = 2000;
+/*
+ * กรุงศรีอยุธยา 3D — เซิร์ฟเวอร์ล็อคอิน / สมัครไอดี / เซฟความคืบหน้า
+ *
+ * วิธีรัน (ต้องมี Node.js 16 ขึ้นไป ไม่ต้องติดตั้งแพ็กเกจเพิ่ม):
+ *     node server.js
+ * แล้วเปิดเบราว์เซอร์ที่  http://localhost:3000
+ * (มือถือในวง Wi-Fi เดียวกันเปิด  http://<IP เครื่อง>:3000)
+ *
+ * วางไฟล์ rpg.html ไว้โฟลเดอร์เดียวกับไฟล์นี้
+ * ข้อมูลผู้เล่นเก็บที่ data/accounts.json  (เปลี่ยนพอร์ตได้ด้วย PORT=8080 node server.js)
+ */
+'use strict';
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
+const crypto = require('crypto');
 
-let db = { msgs: { general: [], checkpoint: [] }, dms: [], bans: {}, pics: {}, announce: null, vips: {}, djs: {}, gallery: [] };
-try { db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8'))); } catch (e) {}
-db.gallery = Array.isArray(db.gallery) ? db.gallery : [];
-// ลบข้อความของบอทที่ค้างอยู่ในข้อมูลเดิม
-db.msgs.general = (db.msgs.general || []).filter(function (m) { return !m.bot; });
-db.msgs.checkpoint = (db.msgs.checkpoint || []).filter(function (m) { return !m.bot; });
-db.dms = (db.dms || []).filter(function (m) { return !m.bot; });
-db.djs = db.djs || {};
-let saveT;
-function save() { clearTimeout(saveT); saveT = setTimeout(function () { fs.writeFile(DATA, JSON.stringify(db), function () {}); }, 1500); }
+const PORT = +process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+const HTML = path.join(__dirname, process.env.GAME_FILE || 'rpg.html');
+const DATA_DIR = path.join(__dirname, 'data');
+const DB_FILE = path.join(DATA_DIR, 'accounts.json');
+const ID_RE = /^[A-Za-z][A-Za-z0-9]{1,15}_[mf]$/i;
+const SESSION_MS = 30 * 24 * 3600 * 1000;
+const MAX_BODY = 256 * 1024;
 
-const users = new Map(); // id -> {conns:Set, n, d, adm}
-const lastSend = new Map();
-let liveVoice = null; // {adminId, session}
+// ---------- ฐานข้อมูลไฟล์ JSON ----------
+fs.mkdirSync(DATA_DIR, { recursive: true });
+let db = { users: {}, sessions: {} };
+try { db = Object.assign(db, JSON.parse(fs.readFileSync(DB_FILE, 'utf8'))); } catch (e) { /* ไฟล์ใหม่ */ }
+let dirty = false, writing = false;
+function persist() {
+  dirty = true;
+  if (writing) return;
+  writing = true;
+  setTimeout(() => {
+    dirty = false;
+    const tmp = DB_FILE + '.tmp';
+    fs.writeFile(tmp, JSON.stringify(db), err => {
+      if (!err) fs.rename(tmp, DB_FILE, () => { writing = false; if (dirty) persist(); });
+      else { writing = false; console.error('บันทึกข้อมูลไม่สำเร็จ', err.message); }
+    });
+  }, 400);
+}
+function flushSync() { try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) {} }
+process.on('SIGINT', () => { flushSync(); process.exit(0); });
+process.on('SIGTERM', () => { flushSync(); process.exit(0); });
 
-const uidOf = tk => crypto.createHash('sha256').update(tk).digest('hex').slice(0, 16);
-const okTk = tk => typeof tk === 'string' && /^[0-9a-f]{16,100}$/.test(tk);
-function isAdmin(ak) {
-  if (!ADMIN_KEY || typeof ak !== 'string') return false;
-  const a = Buffer.from(ak), b = Buffer.from(ADMIN_KEY);
+// ---------- รหัสผ่าน / เซสชัน ----------
+const hashPw = (pw, salt) => crypto.scryptSync(pw, salt, 32).toString('hex');
+function checkPw(pw, u) {
+  const a = Buffer.from(hashPw(pw, u.salt), 'hex'), b = Buffer.from(u.hash, 'hex');
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-const clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
-const pvOf = id => (db.pics[id] ? db.pics[id].v : 0);
-const vipOf = id => db.vips[id] > Date.now();
-const djOf = id => !!db.djs[id];
-const banOf = id => (db.bans[id] > Date.now() ? db.bans[id] : 0);
-
-function sse(res, ev, data) { res.write('event: ' + ev + '\ndata: ' + JSON.stringify(data) + '\n\n'); }
-function toUsers(ids, ev, data) {
-  ids.forEach(function (id) { const u = users.get(id); if (u) u.conns.forEach(function (r) { sse(r, ev, data); }); });
+function newSession(key) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = Date.now();
+  for (const t in db.sessions) if (db.sessions[t].exp < now) delete db.sessions[t];
+  db.sessions[token] = { key, exp: now + SESSION_MS };
+  return token;
 }
-function toAll(ev, data) { users.forEach(function (u) { u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
-function toAdmins(ev, data) { users.forEach(function (u) { if (u.adm) u.conns.forEach(function (r) { sse(r, ev, data); }); }); }
-function people() {
-  const out = [];
-  users.forEach(function (u, id) {
-    if (u.conns.size && u.d !== undefined) out.push({ id: id, n: u.n, d: u.d, pv: pvOf(id), adm: !!u.adm, vip: vipOf(id), dj: djOf(id) });
-  });
-  return out;
-}
-const pushPeople = () => toAll('people', people());
-
-function json(res, code, obj) {
-  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-  res.end(JSON.stringify(obj));
-}
-function readBody(req, cb) {
-  let size = 0; const chunks = [];
-  req.on('data', function (c) { size += c.length; if (size > 2200000) { req.destroy(); return; } chunks.push(c); });
-  req.on('end', function () { try { cb(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (e) { cb(null); } });
+function userFromToken(token) {
+  const s = typeof token === 'string' && db.sessions[token];
+  if (!s || s.exp < Date.now()) return null;
+  return db.users[s.key] || null;
 }
 
-// ตรวจเนื้อหาข้อความ (ข้อความ/รูป/เสียง) คืนค่า object หรือ null
-function content(b) {
-  if (b.k === 'i') {
-    if (typeof b.im === 'string' && b.im.indexOf('data:image/jpeg;base64,') === 0 && b.im.length <= 200000) return { k: 'i', im: b.im };
-    return null;
-  }
-  if (b.k === 'v') {
-    if (typeof b.au === 'string' && b.au.indexOf('data:audio/') === 0 && b.au.length <= 230000) {
-      return { k: 'v', au: b.au, dur: Math.max(1, Math.min(15, Math.round(+b.dur || 1))) };
-    }
-    return null;
-  }
-  const t = clean(b.t, 200);
-  return t ? { k: 't', t: t } : null;
+// ---------- กันยิงรหัสสุ่ม ----------
+const tries = new Map();
+function limited(ip) {
+  const now = Date.now(), r = tries.get(ip);
+  if (!r || now - r.t > 10 * 60 * 1000) { tries.set(ip, { t: now, n: 1 }); return false; }
+  return ++r.n > 40;
 }
 
-function handleApi(req, res, route) {
-  readBody(req, function (b) {
-    if (!b || !okTk(b.tk)) return json(res, 400, { error: 'bad' });
-    const id = uidOf(b.tk), u = users.get(id), adm = isAdmin(b.ak);
-    const name = clean(b.n, 12) || (u && u.n) || 'ผู้ใช้';
-
-    if (route === 'presence') {
-      if (u) {
-        u.n = name; u.adm = adm;
-        if (b.d === 0 || b.d === 1 || b.d === 2) u.d = b.d;
-        pushPeople();
-      }
-      return json(res, 200, { pv: pvOf(id) });
-    }
-
-    if (route === 'gallery-add' || route === 'gallery-replace') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      if (typeof b.image !== 'string' || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(b.image) || b.image.length > 1500000) return json(res, 400, { error: 'bad_image' });
-      if (route === 'gallery-add') {
-        if (db.gallery.length >= 20) return json(res, 400, { error: 'gallery_full' });
-        const item = { id: crypto.randomBytes(9).toString('hex'), image: b.image, ts: Date.now() };
-        db.gallery.push(item);
-      } else {
-        const item = db.gallery.find(function (x) { return x.id === String(b.id || ''); });
-        if (!item) return json(res, 404, { error: 'not_found' });
-        item.image = b.image; item.ts = Date.now();
-      }
-      save(); toAll('gallery', db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; }));
-      return json(res, 200, { ok: true, gallery: db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; }) });
-    }
-
-    if (route === 'gallery-delete') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      const before = db.gallery.length;
-      db.gallery = db.gallery.filter(function (x) { return x.id !== String(b.id || ''); });
-      if (db.gallery.length === before) return json(res, 404, { error: 'not_found' });
-      save(); toAll('gallery', db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; }));
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'pic') {
-      if (typeof b.pic !== 'string' || b.pic.indexOf('data:image/jpeg;base64,') !== 0 || b.pic.length > 60000) return json(res, 400, { error: 'bad' });
-      db.pics[id] = { v: Date.now(), data: b.pic }; save(); pushPeople();
-      return json(res, 200, { pv: db.pics[id].v });
-    }
-
-    if (route === 'dj') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      const t = String(b.target || ''), tu = users.get(t);
-      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
-      if (b.on) db.djs[t] = true; else delete db.djs[t];
-      if (!b.on && liveVoice && liveVoice.adminId === t) { liveVoice = null; toAll('voice-stop', { ok: true }); }
-      save(); pushPeople(); toUsers([t], 'dj', { on: !!b.on });
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'vip') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      const t = String(b.target || ''), tu = users.get(t);
-      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
-      if (b.on) db.vips[t] = Date.now() + 30 * 86400000; else delete db.vips[t];
-      save(); pushPeople();
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'announce') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      db.announce = { t: clean(b.t, 150), ts: Date.now() };
-      save(); toAll('announce', db.announce);
-      return json(res, 200, { ok: true });
-    }
-
-
-    if (route === 'del') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      const r = b.r === 'checkpoint' ? 'checkpoint' : 'general', ts = +b.ts, uu = String(b.u || '');
-      const list = db.msgs[r], i = list.findIndex(function (m) { return m.u === uu && m.ts === ts; });
-      if (i < 0) return json(res, 404, { error: 'not found' });
-      list.splice(i, 1);
-      save(); toAll('del', { r: r, u: uu, ts: ts });
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'ban') {
-      if (!adm) return json(res, 403, { error: 'forbidden' });
-      const t = String(b.target || ''), mins = Math.max(0, Math.min(1440, +b.mins || 0));
-      const tu = users.get(t);
-      if (!t || t === id || (tu && tu.adm)) return json(res, 400, { error: 'bad' });
-      if (mins) db.bans[t] = Date.now() + mins * 60000; else delete db.bans[t];
-      save();
-      toUsers([t], 'ban', { until: banOf(t) });
-      toAdmins('bans', db.bans);
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'voice-start') {
-      if (!(adm || djOf(id))) return json(res, 403, { error: 'forbidden' });
-      if (liveVoice && liveVoice.adminId !== id) return json(res, 409, { error: 'busy' });
-      const session = crypto.randomBytes(12).toString('hex');
-      liveVoice = { adminId: id, session: session, participants: new Set() };
-      toAll('voice-start', { adminId: id, session: session });
-      return json(res, 200, { ok: true, session: session });
-    }
-
-    if (route === 'voice-stop') {
-      if (!liveVoice || b.session !== liveVoice.session || !(liveVoice.adminId === id || adm)) return json(res, 403, { error: 'forbidden' });
-      liveVoice = null;
-      toAll('voice-stop', { ok: true });
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'voice-signal') {
-      const target = String(b.target || ''), sig = b.signal;
-      if (!liveVoice || b.session !== liveVoice.session || !target || !sig || typeof sig !== 'object') return json(res, 400, { error: 'bad' });
-      const dest = users.get(target);
-      if (!dest || !dest.conns.size || target === id) return json(res, 404, { error: 'offline' });
-      const isHost = id === liveVoice.adminId;
-      if (sig.type === 'ready') {
-        if (isHost || target !== liveVoice.adminId) return json(res, 403, { error: 'forbidden' });
-        liveVoice.participants.add(id);
-      } else if (sig.type === 'offer') {
-        if (!isHost || !liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
-      } else if (sig.type === 'answer' || sig.type === 'ice') {
-        if (isHost) {
-          if (!liveVoice.participants.has(target)) return json(res, 403, { error: 'forbidden' });
-        } else if (target !== liveVoice.adminId || !liveVoice.participants.has(id)) return json(res, 403, { error: 'forbidden' });
-      } else return json(res, 400, { error: 'bad_signal' });
-      const payload = { from: id, session: liveVoice.session, signal: sig };
-      toUsers([target], 'voice-signal', payload);
-      return json(res, 200, { ok: true });
-    }
-
-    if (route === 'send' || route === 'dm') {
-      const bn = banOf(id);
-      if (bn) return json(res, 403, { error: 'banned', until: bn });
-      const now = Date.now();
-      if (now - (lastSend.get(id) || 0) < 700) return json(res, 429, { error: 'rate' });
-      lastSend.set(id, now);
-      const c = content(b);
-      if (!c) return json(res, 400, { error: 'bad' });
-
-      if (route === 'send') {
-        if (!(b.d === 0 || b.d === 1 || b.d === 2)) return json(res, 400, { error: 'bad' });
-        const r = b.r === 'checkpoint' ? 'checkpoint' : 'general';
-        const m = Object.assign({ u: id, n: name, d: b.d, r: r, ts: now, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id) }, c);
-        const list = db.msgs[r]; list.push(m);
-        while (list.length > MAX_MSGS) list.shift();
-        save(); toAll('msg', m);
-        return json(res, 200, { ok: true });
-      }
-
-      const to = String(b.to || '');
-      if (!to || to === id) return json(res, 400, { error: 'bad' });
-      const m = Object.assign({ a: id, b: to, an: name, adm: adm, vip: vipOf(id), dj: djOf(id), pv: pvOf(id), ts: now }, c);
-      db.dms.push(m);
-      while (db.dms.length > MAX_DMS) db.dms.shift();
-      save(); toUsers([id, to], 'dm', m);
-      return json(res, 200, { ok: true });
-    }
-
-    json(res, 404, { error: 'not found' });
+// ---------- HTTP ----------
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+};
+function send(res, code, obj) {
+  const b = JSON.stringify(obj);
+  res.writeHead(code, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, CORS));
+  res.end(b);
+}
+function readBody(req) {
+  return new Promise((ok, no) => {
+    let n = 0; const ch = [];
+    req.on('data', c => { n += c.length; if (n > MAX_BODY) { no(new Error('big')); req.destroy(); } else ch.push(c); });
+    req.on('end', () => { try { ok(JSON.parse(Buffer.concat(ch).toString('utf8') || '{}')); } catch (e) { no(new Error('json')); } });
+    req.on('error', no);
   });
 }
+const publicUser = u => ({ id: u.id, gender: u.gender });
 
-function handleEvents(req, res, q) {
-  const tk = q.get('tk');
-  if (!okTk(tk)) { res.writeHead(400); return res.end(); }
-  const id = uidOf(tk), adm = isAdmin(q.get('ak'));
-  req.socket.setTimeout(0);
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
-  let u = users.get(id);
-  if (!u) { u = { conns: new Set() }; users.set(id, u); }
-  u.conns.add(res); u.adm = adm;
-  sse(res, 'init', {
-    me: { id: id, admin: adm, dj: djOf(id), ban: banOf(id), pv: pvOf(id) },
-    msgs: db.msgs,
-    people: people(),
-    dms: db.dms.filter(function (m) { return m.a === id || m.b === id; }),
-    bans: adm ? db.bans : {},
-    announce: db.announce,
-  });
-  pushPeople();
-  if (liveVoice && liveVoice.adminId !== id) sse(res, 'voice-start', { adminId: liveVoice.adminId, session: liveVoice.session });
-  const ka = setInterval(function () { res.write(': ping\n\n'); }, 25000);
-  req.on('close', function () {
-    clearInterval(ka); u.conns.delete(res);
-    if (!u.conns.size) {
-      users.delete(id);
-      if (liveVoice && liveVoice.adminId === id) { liveVoice = null; toAll('voice-stop', { ok: true }); }
-      else if (liveVoice) liveVoice.participants.delete(id);
-    }
-    pushPeople();
-  });
+async function api(req, res, url) {
+  const ip = req.socket.remoteAddress || '?';
+  if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'method' });
+  let b;
+  try { b = await readBody(req); } catch (e) { return send(res, 400, { ok: false, error: 'ข้อมูลไม่ถูกต้อง' }); }
+  if (!b || typeof b !== 'object') return send(res, 400, { ok: false, error: 'ข้อมูลไม่ถูกต้อง' });
+
+  if (url === '/api/register') {
+    if (limited(ip)) return send(res, 429, { ok: false, error: 'ลองบ่อยเกินไป กรุณารอสักครู่' });
+    const id = String(b.id || '').trim(), pw = String(b.password || ''), pw2 = String(b.confirm || '');
+    if (!ID_RE.test(id)) return send(res, 400, { ok: false, error: 'ไอดีต้องเป็นภาษาอังกฤษ ตามด้วย _m หรือ _f (เช่น somchai_m)' });
+    if (pw.length < 4 || pw.length > 64) return send(res, 400, { ok: false, error: 'รหัสผ่านต้องยาว 4–64 ตัวอักษร' });
+    if (pw !== pw2) return send(res, 400, { ok: false, error: 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' });
+    const key = id.toLowerCase();
+    if (db.users[key]) return send(res, 409, { ok: false, error: 'ไอดีนี้ถูกใช้แล้ว ลองชื่ออื่น' });
+    const salt = crypto.randomBytes(16).toString('hex');
+    const gender = key.endsWith('_f') ? 'f' : 'm';
+    const u = db.users[key] = { id: key, gender, salt, hash: hashPw(pw, salt), created: Date.now(), save: null };
+    const token = newSession(key);
+    persist();
+    return send(res, 200, Object.assign({ ok: true, isNew: true, token, save: null }, publicUser(u)));
+  }
+
+  if (url === '/api/login') {
+    if (limited(ip)) return send(res, 429, { ok: false, error: 'ลองบ่อยเกินไป กรุณารอสักครู่' });
+    const key = String(b.id || '').trim().toLowerCase(), pw = String(b.password || '');
+    const u = db.users[key];
+    if (!u || !checkPw(pw, u)) return send(res, 401, { ok: false, error: 'ไอดีหรือรหัสผ่านไม่ถูกต้อง' });
+    const token = newSession(key);
+    persist();
+    return send(res, 200, Object.assign({ ok: true, token, save: u.save }, publicUser(u)));
+  }
+
+  if (url === '/api/save') {
+    const u = userFromToken(b.token);
+    if (!u) return send(res, 401, { ok: false, error: 'หมดเวลาเข้าสู่ระบบ' });
+    const s = b.save;
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return send(res, 400, { ok: false, error: 'ข้อมูลเซฟไม่ถูกต้อง' });
+    u.save = s; u.saved = Date.now();
+    persist();
+    return send(res, 200, { ok: true });
+  }
+
+  return send(res, 404, { ok: false, error: 'not found' });
 }
 
-const server = http.createServer(function (req, res) {
-  const url = new URL(req.url, 'http://x'), p = url.pathname;
-  if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
-    return fs.readFile(path.join(__dirname, 'index.html'), function (e, d) {
-      if (e) { res.writeHead(404); return res.end('ไม่พบ index.html (วางไว้โฟลเดอร์เดียวกับ server.js)'); }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(d);
-    });
+// ---------- ส่งไฟล์เกม (บีบอัด gzip ครั้งเดียวตอนเปิดเซิร์ฟเวอร์) ----------
+let page = null, pageGz = null, pageMtime = 0;
+function loadPage() {
+  const st = fs.statSync(HTML);
+  if (page && st.mtimeMs === pageMtime) return;
+  page = fs.readFileSync(HTML);
+  pageGz = zlib.gzipSync(page, { level: 6 });
+  pageMtime = st.mtimeMs;
+  console.log(`โหลด ${path.basename(HTML)} ${(page.length / 1048576).toFixed(1)}MB (gzip ${(pageGz.length / 1048576).toFixed(1)}MB)`);
+}
+try { loadPage(); } catch (e) { console.error('ไม่พบไฟล์เกม:', HTML); process.exit(1); }
+
+const server = http.createServer((req, res) => {
+  const url = (req.url || '/').split('?')[0];
+  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+  if (url.startsWith('/api/')) return api(req, res, url).catch(() => send(res, 500, { ok: false, error: 'server error' }));
+  if (url === '/' || url === '/index.html' || url === '/rpg.html') {
+    try { loadPage(); } catch (e) {}
+    const gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+    const h = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' };
+    if (gz) h['Content-Encoding'] = 'gzip';
+    h['Content-Length'] = (gz ? pageGz : page).length;
+    res.writeHead(200, h);
+    return res.end(req.method === 'HEAD' ? undefined : (gz ? pageGz : page));
   }
-  if (req.method === 'GET' && p === '/events') return handleEvents(req, res, url.searchParams);
-  if (req.method === 'GET' && p === '/api/gallery') {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify(db.gallery.map(function (x) { return { id: x.id, ts: x.ts }; })));
-  }
-  if (req.method === 'GET' && p.indexOf('/gallery-image/') === 0) {
-    const item = db.gallery.find(function (x) { return x.id === p.slice(15); });
-    if (!item) { res.writeHead(404); return res.end(); }
-    const raw = Buffer.from(item.image.split(',')[1], 'base64');
-    res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=60' });
-    return res.end(raw);
-  }
-  if (req.method === 'GET' && p.indexOf('/pic/') === 0) {
-    const pic = db.pics[p.slice(5)];
-    if (!pic) { res.writeHead(404); return res.end(); }
-    res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000' });
-    return res.end(Buffer.from(pic.data.split(',')[1], 'base64'));
-  }
-  if (req.method === 'POST' && p.indexOf('/api/') === 0) return handleApi(req, res, p.slice(5));
-  res.writeHead(404); res.end();
+  res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('404');
 });
-
-
-// ลบรูป/เสียงที่หมดอายุ
-setInterval(function () {
-  const now = Date.now(); let ch = false;
-  function sweep(m) { if ((m.im || m.au) && now - m.ts > MEDIA_TTL) { delete m.im; delete m.au; m.exp = true; ch = true; } }
-  db.msgs.general.forEach(sweep); db.msgs.checkpoint.forEach(sweep); db.dms.forEach(sweep);
-  if (ch) save();
-  let vc = false;
-  Object.keys(db.vips).forEach(function (k) { if (db.vips[k] <= now) { delete db.vips[k]; vc = true; } });
-  if (vc) { save(); pushPeople(); }
-}, 60000);
-
-server.listen(PORT, function () {
-  save(); // บันทึกข้อมูลหลังลบข้อความบอทเดิม
-  console.log('เปิดที่ http://localhost:' + PORT);
-  if (!ADMIN_KEY) console.log('ยังไม่ได้ตั้ง ADMIN_KEY จึงใช้ระบบแอดมินไม่ได้');
+server.listen(PORT, HOST, () => {
+  console.log(`เซิร์ฟเวอร์พร้อมแล้ว →  http://localhost:${PORT}`);
+  console.log(`ผู้เล่นที่สมัครแล้ว: ${Object.keys(db.users).length} คน  (ข้อมูลที่ ${DB_FILE})`);
 });
